@@ -1,0 +1,256 @@
+import asyncio
+from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ
+from main_settings import google_creds_path, spreadsheet_id, main_worksheet, col_names, \
+    exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads
+from parser_settings import allow_triggers
+import time
+import math
+import traceback
+
+lock = asyncio.Lock()
+errors_for_retry = ['timeout', 'TimeoutError']
+
+
+async def collect_info_from_sheet(google_sheet):
+    main_data, indices = google_sheet.get_all_info(main_worksheet)
+    exceptions = [row[0] for row in google_sheet.get_all_info(exceptions_worksheet)[0]]
+    exceptions_repricer = [row[0] for row in google_sheet.get_all_info(exceptions_repricer_worksheet)[0]]
+    return main_data, indices, exceptions, exceptions_repricer
+
+
+def add_proxies_to_list(proxies_list_from_supplier, proxies_list_for_app):
+    for proxy_info in proxies_list_from_supplier:
+        login = proxy_info['login']
+        password = proxy_info['password']
+        ip = proxy_info['ip']
+        port = proxy_info['port_http']
+        proxy = f'{login}:{password}@{ip}:{port}'
+        proxies_list_for_app.append(proxy)
+
+
+def average_processing_time_by_link(start_time, end_time, processed_data):
+    processing_time = end_time - start_time
+    average_time = processing_time / len(processed_data)
+
+    return average_time
+
+
+def thread_count(all_data_from_sheet_length):
+    if all_data_from_sheet_length >= transient_vice_for_threads:
+        threads = math.ceil(all_data_from_sheet_length / transient_vice_for_threads)
+    else:
+        threads = 1
+
+    return threads
+
+
+async def read_file_of_processing(worker, server):
+    all_res = worker.read_file('./processing/process.csv')
+    errors = worker.check_info_into_errors_file('./processing/errors.csv')
+
+    if errors:
+        await server.send_file('send_file_processed', f'Errors {shop_name}',
+                               './processing/errors.csv')
+
+    return all_res
+
+
+async def collect_proxies(server, proxies_list, threads):
+    response = await server.get_proxies(threads)
+    proxy_full_info = response['data']['proxies']
+
+    add_proxies_to_list(proxy_full_info, proxies_list)
+
+    return proxy_full_info
+
+
+async def exception_processing(server, error_message, retries, timeout, proxies=None):
+    if retries != 0:
+        await server.post_error(error_message, shop_name)
+        await asyncio.sleep(60 * timeout)
+    else:
+        if proxies:
+            await server.reset_proxy(proxies)
+        return 'reboot'
+
+
+async def processing(timeout_between_sheets_requests):
+    amz_worker = RequestToAMZ()
+    file_worker = FilesWorker()
+    server_connect = RequestToServer()
+    proxies = []
+
+    async with lock:
+        retries = 36
+        while True:
+            try:
+                google_sheets = RequestToGoogleSheets(
+                    spreadsheet=spreadsheet_id, main_worksheet=main_worksheet,
+                    google_creds_path=google_creds_path, columns=col_names
+                )
+                break
+            except Exception as e:
+                traceback.print_exc()
+                error_message = f'Осталось попыток - {retries} для определения класса {RequestToGoogleSheets.__name__}.\n' \
+                                f'Следующая попытка через 10 минут.\n' \
+                                f'\nТип ошибки: {type(e).__name__}'
+                status = await exception_processing(server_connect, error_message, retries, 10)
+                retries -= 1
+                if status == 'reboot':
+                    error_message = f'Класс {RequestToGoogleSheets.__name__} та и не смог быть определён ' \
+                                    f'по причине ошибки - {type(e).__name__}.\n' \
+                                    f'\nКод перезапускается...'
+                    await server_connect.post_error(error_message, shop_name)
+                    return await processing(timeout_between_sheets_requests)
+    print('Connect to Google Sheets success.')
+    await asyncio.sleep(timeout_between_sheets_requests)
+
+    print('Collect data for check...')
+    async with lock:
+        retries = 36
+        while True:
+            try:
+                data_from_sheet, indices, exceptions_from_sheet, \
+                    exceptions_repricer_from_sheet = await collect_info_from_sheet(google_sheet=google_sheets)
+                break
+            except Exception as e:
+                traceback.print_exc()
+                error_message = f'Осталось попыток - {retries} для вызова функции {collect_info_from_sheet.__name__}.\n' \
+                                f'Следующая попытка через 10 минут.\n' \
+                                f'\nТип ошибки: {type(e).__name__}'
+                status = await exception_processing(server_connect, error_message, retries, 10)
+                retries -= 1
+                if status == 'reboot':
+                    error_message = f'Функция {collect_info_from_sheet.__name__} та и не смогла успешно выполнится ' \
+                                    f'по причине ошибки - {type(e).__name__}.\n' \
+                                    f'\nКод перезапускается...'
+                    await server_connect.post_error(error_message, shop_name)
+                    return await processing(timeout_between_sheets_requests)
+    await asyncio.sleep(timeout_between_sheets_requests)
+
+    # Определяем кол-во потоков в зависимости от кол-ва товаров в инвентаре
+    threads = thread_count(len(data_from_sheet))
+
+    # Делаем запрос на сервер для получения прокси.
+    print('Getting proxies by API...')
+    proxy_full_info = await collect_proxies(server_connect, proxies, threads=threads)
+
+    # Добавляем резервный прокси **лучше постараться реализовать при помощи запроса на сервер.
+    reserve_proxy = ['angel3223221:P7oDSPbSPz@185.228.195.119:50100']
+
+    # Реализуем класс для обработки страниц ebay.
+    start_time = time.time()
+    ebay_parser = RequestsToEbay(data=data_from_sheet, proxies=proxies, reserve_proxies=reserve_proxy,
+                                 allow_triggers=allow_triggers, exceptions=exceptions_from_sheet,
+                                 exceptions_repricer=exceptions_repricer_from_sheet,
+                                 server_connect=server_connect, indices=indices)
+    await asyncio.sleep(1)
+
+    # Вызываем метод для обработки ссылок из таблицы и парсинг страниц.
+    print(f'Starting check with {threads} threads...')
+    report = await ebay_parser.get_req(threads)
+    print('Reading result...')
+    all_res = await read_file_of_processing(file_worker, server_connect)
+
+    print('Collect to table info...')
+    # Собираем данные для загрузки в таблицу и загружаем.
+    async with lock:
+        retries = 36
+        while True:
+            try:
+                to_table = google_sheets.collect_to_table_by_index(all_res)
+                break
+            except Exception as e:
+                traceback.print_exc()
+                error_message = f'Осталось попыток - {retries} для вызова функции {google_sheets.collect_to_table_by_index.__name__}.\n' \
+                                f'Следующая попытка через 10 минут.\n' \
+                                f'\nТип ошибки: {type(e).__name__}'
+                status = await exception_processing(server_connect, error_message, retries, 10, proxies=proxy_full_info)
+                retries -= 1
+                if status == 'reboot':
+                    error_message = f'Функция {google_sheets.collect_to_table_by_index.__name__} та и не смогла успешно выполнится ' \
+                                    f'по причине ошибки - {type(e).__name__}.\n' \
+                                    f'\nКод перезапускается...'
+                    caption = f'{shop_name} - бот не смог достучаться до таблицы, чтобы ' \
+                              f'занести информацию после чека.'
+                    await server_connect.post_error(error_message, shop_name)
+                    await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
+                    return await processing(timeout_between_sheets_requests)
+    await asyncio.sleep(timeout_between_sheets_requests)
+
+    print('Uploading...')
+    async with lock:
+        retries = 36
+        while True:
+            try:
+                google_sheets.update_table(to_table)
+                break
+            except Exception as e:
+                traceback.print_exc()
+                error_message = f'Осталось попыток - {retries} для вызова функции {google_sheets.update_table.__name__}.\n' \
+                                f'Следующая попытка через 10 минут.\n' \
+                                f'\nТип ошибки: {type(e).__name__}'
+                status = await exception_processing(server_connect, error_message, retries, 10, proxies=proxy_full_info)
+                retries -= 1
+                if status == 'reboot':
+                    error_message = f'Функция {google_sheets.update_table.__name__} та и не смогла успешно выполнится ' \
+                                    f'по причине ошибки - {type(e).__name__}.\n' \
+                                    f'\nКод перезапускается...'
+
+                    caption = f'{shop_name} - бот не смог достучаться до таблицы, чтобы ' \
+                              f'занести информацию после чека.'
+                    await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
+                    await server_connect.post_error(error_message, shop_name)
+                    return await processing(timeout_between_sheets_requests)
+    await asyncio.sleep(timeout_between_sheets_requests)
+
+    # Завершаем выполнение программы и отправляем отчёт.
+    end_time = time.time()
+    average_time_for_processing_link = average_processing_time_by_link(start_time, end_time, all_res)
+    full_time_of_code_processing = end_time - start_time
+
+    print('Collect Amazon file...')
+    # Собираем обновленные данные из таблицы и создаем файл для загрузки на амз
+    async with lock:
+        retries = 36
+        while True:
+            try:
+                updated_data, new_indices, exceptions_from_sheet_new, \
+                    exceptions_repricer_from_sheet_new = await collect_info_from_sheet(google_sheet=google_sheets)
+                break
+            except Exception as e:
+                traceback.print_exc()
+                error_message = f'Осталось попыток - {retries} для вызова функции {collect_info_from_sheet.__name__}.\n' \
+                                f'Следующая попытка через 10 минут.\n' \
+                                f'\nТип ошибки: {type(e).__name__}'
+                status = await exception_processing(server_connect, error_message, retries, 10, proxies=proxy_full_info)
+                retries -= 1
+                if status == 'reboot':
+                    error_message = f'Функция {collect_info_from_sheet.__name__} та и не смогла успешно выполнится ' \
+                                    f'по причине ошибки - {type(e).__name__}.\n' \
+                                    f'\nКод перезапускается...'
+                    message = 'Бот обновил информацию в таблице, но не смогу получить обновленную для ' \
+                              'отправки на Амазон.'
+                    await server_connect.send_message(message)
+                    await server_connect.post_error(error_message, shop_name)
+                    return await processing(timeout_between_sheets_requests)
+
+    file_worker.create_file_for_amazon(updated_data, new_indices)
+
+    print('Sending file to Amazon...')
+    amz_worker.upload_to_amz('./uploads/upload.txt')
+
+    print('Sending report...')
+    await server_connect.post_report(shop_name, report, average_time_for_processing_link,
+                                     full_time_of_code_processing, proxy_full_info)
+
+    print('Done!')
+
+
+async def main():
+    while True:
+        await processing(5)
+        await asyncio.sleep(60 * 60 * 6)
+
+
+asyncio.run(main())

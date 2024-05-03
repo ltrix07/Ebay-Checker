@@ -1,0 +1,14 @@
+sku	price	quantity	handling-time	merchant_shipping_group_name
+angels66	18.98	109	4	2-4
+angels70	42.65	109	4	3-5
+angels159	21.14	109	4	2-4
+angels166	338.22	4	4	2-4
+angels271	25.94	109	4	2-4
+angels273	47.03	109	4	2-4
+angels276	30.25	109	4	2-4
+angels355		0	4	2-4
+angels887		0	4	2-4
+angels896	201.0	109	4	2-4
+angels897	201.62	109	4	2-4
+angels898	18.98	109	4	2-4
+angels905	22.76	3	4	2-4
