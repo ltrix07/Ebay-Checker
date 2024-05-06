@@ -269,9 +269,14 @@ class RequestsToEbay:
             self.report['errors']['no_block_with_info'] += 1
             self.__add_to_report(output, price_previous, shipping_price_previous, quantity_previous)
 
-            with open(f'./page_errors/{sku}', 'w') as file:
-                file.write(page)
-
+            dir_path = './page_errors'
+            if os.path.isdir(dir_path):
+                with open(f'{dir_path}/{sku}.html', 'w') as file:
+                    file.write(page)
+            else:
+                os.makedirs(dir_path)
+                with open(f'{dir_path}/{sku}.html', 'w') as file:
+                    file.write(page)
             await asyncio.sleep(30)
             return output
 
