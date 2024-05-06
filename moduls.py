@@ -11,6 +11,7 @@ import websockets
 import csv
 import base64
 import requests
+import random
 from sp_api.base import Marketplaces, SellingApiException
 from sp_api.api import Feeds
 from sp_api.base.reportTypes import ReportType
@@ -113,7 +114,7 @@ class RequestsToEbay:
         return days_left
 
     @staticmethod
-    async def __find_in_page_by_xpath(lxml_tree, elements=list):
+    async def __find_in_page_by_xpath(lxml_tree, elements):
         for element in elements:
             desired_element = lxml_tree.xpath(element)
             if desired_element:
@@ -121,7 +122,7 @@ class RequestsToEbay:
         return None
 
     @staticmethod
-    async def __find_in_page_by_slicing(page, strs=list):
+    async def __find_in_page_by_slicing(page, strs):
         for str_ in strs:
             try:
                 index = page.index(str_.get('s'))
@@ -316,16 +317,22 @@ class RequestsToEbay:
                 shipping_price = '0' if 'Free' in results["ship_price_supp"][0] \
                     else results["ship_price_supp"][0].replace('US $', '')
             else:
+                await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
+                                                     f'{url}', shop_name)
                 raise Exception(f'Shipping price is None in {url}')
 
             try:
                 if shipping_price:
                     shp_price = float(shipping_price)
                 else:
+                    await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
+                                                         f'{url}', shop_name)
                     raise Exception(f'Shipping price is None in {url}')
             except Exception as error:
                 with open('exception_page.html', 'w', encoding='utf-8') as file:
                     file.write(page)
+                await self.server_connect.post_error(f'Скорее всего, прокси показывают не ту локацию. @L_trix\n'
+                                                     f'{url}', shop_name)
                 raise Exception(f'{error} in {url}, {shipping_price}')
 
             if results["ship_date_supp"]:
@@ -343,6 +350,8 @@ class RequestsToEbay:
                 if results["price_supp"]:
                     price = float(results["price_supp"][0].replace('US $', '').replace('/ea', '').replace(',', ''))
                 else:
+                    await self.server_connect.post_error(f'На странице не была найдена цена. @L_trix\n'
+                                                         f'{url}', shop_name)
                     raise Exception(f'Price is None in {url}')
             except Exception as error:
                 with open('exception_page.html', 'w', encoding='utf-8') as file:
@@ -356,6 +365,8 @@ class RequestsToEbay:
             if results["quantity_supp"]:
                 qty = int(results["quantity_supp"])
             else:
+                await self.server_connect.post_error(f'На странице не было найдено кол-во. @L_trix\n'
+                                                     f'{url}', shop_name)
                 raise Exception(f'Qty is None in {url}')
         except Exception as error:
             with open('exception_page.html', 'w', encoding='utf-8') as file:
@@ -369,6 +380,8 @@ class RequestsToEbay:
             if supplier is None:
                 with open('exception_page.html', 'w', encoding='utf-8') as file:
                     file.write(page)
+                await self.server_connect.post_error(f'На странице не был найден поставщик. @L_trix\n'
+                                                     f'{url}', shop_name)
                 raise Exception(f'Supplier name is None in {url}')
 
         if results["title"]:
@@ -450,7 +463,10 @@ class RequestsToEbay:
             '\t', ''), \
             row[self.price_index], row[self.shipping_price_index], row[self.quantity_index], \
             row[self.shipping_days_index], row[self.supplier_index]
-        variation = row[self.variations_index] if row[self.variations_index] != '' else 'false'
+        try:
+            variation = row[self.variations_index] if row[self.variations_index] != '' else 'false'
+        except IndexError:
+            variation = 'false'
 
         if url != '' and 'ebay' in url and url != col_names['url']:  # Если ссылка пустая, не пытаемся к ней стучаться
             if url.split('/')[0] == 'ebay.com':
@@ -590,6 +606,14 @@ class RequestsToEbay:
             return self.__error_output('error 400', url, variation, sku)
 
     async def get_req(self, threads):
+        random.seed(datetime.now().timestamp())
+        user_agents = []
+        with open('./user_agents/user_agents.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)
+            for row in reader:
+                user_agents.append(row[1])
+
         self.file_worker.create_file_intermediate_csv('processing', 'process.csv')
         self.file_worker.create_file_with_errors_csv('processing', 'errors.csv')
         batch_size_per_thread = 10  # Размер каждого пакета ссылок для одного потока
@@ -614,6 +638,8 @@ class RequestsToEbay:
                 data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
                 # Выполнение задач в пуле потоков
                 tasks = []
+                user_agent = random.choice(user_agents)
+                headers['User-Agent'] = user_agent
                 for i in range(0, len(current_batch), batch_size_per_thread):
                     proxies = [next(proxies_circle) for _ in
                                range(batch_size_per_thread)]  # Прокси для текущего пакета ссылок

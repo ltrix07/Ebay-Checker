@@ -2,7 +2,7 @@
 server_host = '91.209.226.51:3000'  # Server host
 
 strategy = 'drop'
-standard_stock = None
+standard_stock = 109
 transient_vice_for_threads = 50000
 
 """ --- Amazon settings --- """
@@ -13,13 +13,13 @@ amz_creds = {
 }
 
 seller_id = None  # Seller ID
-shop_name = None  # Shop name
+shop_name = 'Angel Test'  # Shop name
 
 
 """ --- Google settings --- """
 google_creds_path = './credentials/google_creds.json'  # Google Creds
-spreadsheet_id = None  # Spreadsheet ID
-main_worksheet = None  # Main worksheet name
+spreadsheet_id = '1oKitrZsqur0WpUPFa2eC8XGzr1O6LZMHaWDuRg7Xi4E'  # Spreadsheet ID
+main_worksheet = 'EBAY'  # Main worksheet name
 exceptions_worksheet = 'Exceptions'  # Worksheet with exceptions
 exceptions_repricer_worksheet = 'Exceptions for Repricer'  # Worksheet with exceptions for "Repricer.com"
 col_names = {'sku': 'sku',

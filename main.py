@@ -238,7 +238,7 @@ async def processing(timeout_between_sheets_requests):
     file_worker.create_file_for_amazon(updated_data, new_indices)
 
     print('Sending file to Amazon...')
-    amz_worker.upload_to_amz('./uploads/upload.txt')
+    # amz_worker.upload_to_amz('./uploads/upload.txt')
 
     print('Sending report...')
     await server_connect.post_report(shop_name, report, average_time_for_processing_link,
