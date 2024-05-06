@@ -328,12 +328,11 @@ class RequestsToEbay:
                     await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
                                                          f'{url}', shop_name)
                     raise Exception(f'Shipping price is None in {url}')
-            except Exception as error:
-                with open('exception_page.html', 'w', encoding='utf-8') as file:
-                    file.write(page)
-                await self.server_connect.post_error(f'Скорее всего, прокси показывают не ту локацию. @L_trix\n'
+            except Exception:
+                shp_price = 5.00
+                await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
                                                      f'{url}', shop_name)
-                raise Exception(f'{error} in {url}, {shipping_price}')
+                await asyncio.sleep(360)
 
             if results["ship_date_supp"]:
                 try:
