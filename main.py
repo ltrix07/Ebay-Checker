@@ -1,11 +1,12 @@
 import asyncio
+import time
+import math
+import traceback
 from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ
 from main_settings import google_creds_path, spreadsheet_id, main_worksheet, col_names, \
     exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads
 from parser_settings import allow_triggers
-import time
-import math
-import traceback
+
 
 lock = asyncio.Lock()
 errors_for_retry = ['timeout', 'TimeoutError']
@@ -16,16 +17,6 @@ async def collect_info_from_sheet(google_sheet):
     exceptions = [row[0] for row in google_sheet.get_all_info(exceptions_worksheet)[0]]
     exceptions_repricer = [row[0] for row in google_sheet.get_all_info(exceptions_repricer_worksheet)[0]]
     return main_data, indices, exceptions, exceptions_repricer
-
-
-def add_proxies_to_list(proxies_list_from_supplier, proxies_list_for_app):
-    for proxy_info in proxies_list_from_supplier:
-        login = proxy_info['login']
-        password = proxy_info['password']
-        ip = proxy_info['ip']
-        port = proxy_info['port_http']
-        proxy = f'{login}:{password}@{ip}:{port}'
-        proxies_list_for_app.append(proxy)
 
 
 def average_processing_time_by_link(start_time, end_time, processed_data):
@@ -55,11 +46,9 @@ async def read_file_of_processing(worker, server):
     return all_res
 
 
-async def collect_proxies(server, proxies_list, threads):
+async def collect_proxies(server, threads):
     response = await server.get_proxies(threads)
     proxy_full_info = response['data']['proxies']
-
-    add_proxies_to_list(proxy_full_info, proxies_list)
 
     return proxy_full_info
 
@@ -78,7 +67,6 @@ async def processing(timeout_between_sheets_requests):
     amz_worker = RequestToAMZ()
     file_worker = FilesWorker()
     server_connect = RequestToServer()
-    proxies = []
 
     async with lock:
         retries = 36
@@ -102,6 +90,7 @@ async def processing(timeout_between_sheets_requests):
                                     f'\nКод перезапускается...'
                     await server_connect.post_error(error_message, shop_name)
                     return await processing(timeout_between_sheets_requests)
+
     print('Connect to Google Sheets success.')
     await asyncio.sleep(timeout_between_sheets_requests)
 
@@ -133,14 +122,14 @@ async def processing(timeout_between_sheets_requests):
 
     # Делаем запрос на сервер для получения прокси.
     print('Getting proxies by API...')
-    proxy_full_info = await collect_proxies(server_connect, proxies, threads=threads)
+    proxy_full_info = await collect_proxies(server_connect, threads=threads)
 
     # Добавляем резервный прокси **лучше постараться реализовать при помощи запроса на сервер.
     reserve_proxy = ['angel3223221:P7oDSPbSPz@185.228.195.119:50100']
 
     # Реализуем класс для обработки страниц ebay.
     start_time = time.time()
-    ebay_parser = RequestsToEbay(data=data_from_sheet, proxies=proxies, reserve_proxies=reserve_proxy,
+    ebay_parser = RequestsToEbay(data=data_from_sheet, proxies=proxy_full_info, reserve_proxies=reserve_proxy,
                                  allow_triggers=allow_triggers, exceptions=exceptions_from_sheet,
                                  exceptions_repricer=exceptions_repricer_from_sheet,
                                  server_connect=server_connect, indices=indices)
@@ -149,6 +138,22 @@ async def processing(timeout_between_sheets_requests):
     # Вызываем метод для обработки ссылок из таблицы и парсинг страниц.
     print(f'Starting check with {threads} threads...')
     report = await ebay_parser.get_req(threads)
+    if report['status'] == 'reload proxy':
+        to_ban_info = []
+        bad_proxies = list(set(report['proxy_ids']))
+        for proxy in proxy_full_info:
+            if proxy['ip'] in bad_proxies:
+                to_ban_info.append(proxy)
+                proxy['comment'] = 'ban'
+
+        await server_connect.reset_proxy(proxy_full_info)
+        await asyncio.sleep(5)
+        await server_connect.proxy_ban(to_ban_info)
+        print('Proxy is bad. Code reloading after 30 sec.')
+        await asyncio.sleep(30)
+        return await processing(timeout_between_sheets_requests)
+    report_data = report['report']
+
     print('Reading result...')
     all_res = await read_file_of_processing(file_worker, server_connect)
 
@@ -238,10 +243,12 @@ async def processing(timeout_between_sheets_requests):
     file_worker.create_file_for_amazon(updated_data, new_indices)
 
     print('Sending file to Amazon...')
-    # amz_worker.upload_to_amz('./uploads/upload.txt')
+    status_of_sending_to_amz = amz_worker.upload_to_amz('./uploads/upload.txt')
+    if status_of_sending_to_amz is None:
+        ebay_parser.file_dose_not_sent_to_amz()
 
     print('Sending report...')
-    await server_connect.post_report(shop_name, report, average_time_for_processing_link,
+    await server_connect.post_report(shop_name, report_data, average_time_for_processing_link,
                                      full_time_of_code_processing, proxy_full_info)
 
     print('Done!')

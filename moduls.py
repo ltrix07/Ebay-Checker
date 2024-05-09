@@ -33,8 +33,8 @@ timeout = aiohttp.ClientTimeout(total=120)
 
 
 class RequestsToEbay:
-    def __init__(self, data, exceptions, exceptions_repricer, proxies, server_connect, indices, reserve_proxies=None,
-                 allow_triggers=None):
+    def __init__(self, data, exceptions, exceptions_repricer, proxies, server_connect, indices,
+                 reserve_proxies=None, allow_triggers=None):
         self.data = data
         self.exceptions = exceptions
         self.exceptions_repricer = exceptions_repricer
@@ -57,7 +57,8 @@ class RequestsToEbay:
                 'ebay_close_connection': 0,
                 'server_close_connection': 0,
                 'error 400': 0
-            }
+            },
+            'amz_updated': True
         }
         self.sku_index = indices["sku"]
         self.url_index = indices["url"]
@@ -69,6 +70,21 @@ class RequestsToEbay:
         self.variations_index = indices["variations"]
 
         self.file_worker = FilesWorker()
+
+    def file_dose_not_sent_to_amz(self):
+        self.report['amz_updated'] = False
+
+    @staticmethod
+    def add_proxies_to_list(proxies_list_from_supplier, proxies_list_for_app):
+        for proxy_info in proxies_list_from_supplier:
+            login = proxy_info['login']
+            password = proxy_info['password']
+            ip = proxy_info['ip']
+            port = proxy_info['port_http']
+            proxy = f'{login}:{password}@{ip}:{port}'
+            proxies_list_for_app.append(proxy)
+
+        return proxies_list_for_app
 
     def __add_to_report(self, new_data, previous_price, previous_shipping_price, previous_qty):
         args = [previous_qty, previous_price, previous_shipping_price]
@@ -145,7 +161,20 @@ class RequestsToEbay:
         except TypeError:
             return None
 
-    async def __parser_page(self, page, row):
+    @staticmethod
+    def __does_not_ship_to(text):
+        text = text.lower()
+        pattern = re.compile(r'does not ship to (.*?)</span>', re.IGNORECASE)
+        match = pattern.search(text)
+        try:
+            if match:
+                return match[0]
+        except TypeError:
+            return None
+
+        return None
+
+    async def __parser_page(self, page, row, proxy_for_check):
         sku, url, price_previous, shipping_price_previous, quantity_previous, shipping_days_previous, \
             supplier_name = row[self.sku_index], row[self.url_index].split('?')[0], \
             row[self.price_index], row[self.shipping_price_index], row[self.quantity_index], \
@@ -183,6 +212,22 @@ class RequestsToEbay:
             self.report['errors']['unknown_errors'] += 1
             raise Exception(f'Unknown error in {output}')
             # return output
+
+        does_not_shipping = self.__does_not_ship_to(page)
+        if does_not_shipping and 'united states' not in does_not_shipping:
+            with open(f'./page_errors/{sku}.html', 'w') as file:
+                file.write(page)
+
+            output['data']['supplier'] = '{proxy ban} | ' + proxy_for_check
+            return output
+        elif does_not_shipping and 'united states' in does_not_shipping:
+            output['data']['supplier'] = '{does not ship to USA}'
+            error_message = f'Нет доставки по США'
+            self.file_worker.append_error_to_file_with_errors('processing', 'errors.csv', sku, error_message)
+
+            self.__add_to_report(output, price_previous, shipping_price_previous, quantity_previous)
+
+            return output
 
         if strategy == 'drop':
             another_country = self.__other_countries(page)
@@ -321,23 +366,17 @@ class RequestsToEbay:
             if results["ship_price_supp"]:
                 shipping_price = '0' if 'Free' in results["ship_price_supp"][0] \
                     else results["ship_price_supp"][0].replace('US $', '')
+
+                try:
+                    shp_price = float(shipping_price)
+                except Exception:
+                    await self.server_connect.post_error(f'{sku}; На странице не была найдена цена доставки. @L_trix\n'
+                                                         f'{url}', shop_name)
+
+                    raise Exception(f'Not valid shipping price - {sku}, {url}')
             else:
                 await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
                                                      f'{url}', shop_name)
-                raise Exception(f'Shipping price is None in {url}')
-
-            try:
-                if shipping_price:
-                    shp_price = float(shipping_price)
-                else:
-                    await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
-                                                         f'{url}', shop_name)
-                    raise Exception(f'Shipping price is None in {url}')
-            except Exception:
-                shp_price = 5.00
-                await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
-                                                     f'{url}', shop_name)
-                await asyncio.sleep(360)
 
             if results["ship_date_supp"]:
                 try:
@@ -462,11 +501,10 @@ class RequestsToEbay:
     # Функция для обработки запроса на сайт
     async def __fetch(self, session, row, proxy_url, proxy_auth):
         sku, url, price, shipping_price, stock, shipping_days, \
-            supplier_name = row[self.sku_index], row[self.url_index].split('?')[0].replace(' ', '').replace('\n',
-                                                                                                            '').replace(
-            '\t', ''), \
-            row[self.price_index], row[self.shipping_price_index], row[self.quantity_index], \
-            row[self.shipping_days_index], row[self.supplier_index]
+            supplier_name = (row[self.sku_index],
+                             row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
+                             row[self.price_index], row[self.shipping_price_index], row[self.quantity_index],
+                             row[self.shipping_days_index], row[self.supplier_index])
         try:
             variation = row[self.variations_index] if row[self.variations_index] != '' else 'false'
         except IndexError:
@@ -599,7 +637,7 @@ class RequestsToEbay:
 
                     return output
                 else:
-                    return await self.__parser_page(response_text, row)
+                    return await self.__parser_page(response_text, row, proxy_url)
         except TimeoutError:
             return self.__error_output('time out error', url, variation, sku)
         except aiohttp.client_exceptions.ClientHttpProxyError:
@@ -610,6 +648,8 @@ class RequestsToEbay:
             return self.__error_output('error 400', url, variation, sku)
 
     async def get_req(self, threads):
+        proxies = self.add_proxies_to_list(self.proxies, [])
+
         random.seed(datetime.now().timestamp())
         user_agents = []
         with open('./user_agents/user_agents.csv', newline='') as csvfile:
@@ -620,19 +660,20 @@ class RequestsToEbay:
 
         self.file_worker.create_file_intermediate_csv('processing', 'process.csv')
         self.file_worker.create_file_with_errors_csv('processing', 'errors.csv')
+        all_res = []
+        processed = 0
+
         batch_size_per_thread = 10  # Размер каждого пакета ссылок для одного потока
         total_batch_size = threads * batch_size_per_thread  # Общий размер пакета ссылок
 
         proxies_data = []
-        processed = 0
 
         # Создание списка прокси с учетом удвоенного количества потоков
         for i in range(threads * 2):
-            proxy = self.proxies[i]
+            proxy = proxies[i]
             proxy_url, proxy_auth = await self.__proxy_auth(proxy)
             proxies_data.append({'url': proxy_url, 'auth': proxy_auth})
 
-        all_res = []
         data_list = self.data  # Используем обычный список
         proxies_circle = cycle(proxies_data)
 
@@ -652,13 +693,28 @@ class RequestsToEbay:
                         tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
                 results = await asyncio.gather(*tasks)
                 all_res.extend(results)
+                proxies_for_ban = []
+                for element in all_res:
+                    if element and '{proxy ban}' in element['data']['supplier']:
+                        proxies_for_ban.append(
+                            element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
+                        )
+
+                if proxies_for_ban:
+                    return {
+                        'status': 'reload proxy',
+                        'proxy_ids': proxies_for_ban
+                    }
                 self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
                 all_res.clear()
                 processed += total_batch_size
                 print(f'Processed: [{processed} | {len(self.data)}]')
                 sys.stdout.flush()
 
-        return self.report
+        return {
+            'status': 'success',
+            'report': self.report
+        }
 
 
 class RequestToServer:
@@ -666,12 +722,7 @@ class RequestToServer:
         pass
 
     @staticmethod
-    async def get_proxies(threads):
-        data = {
-            'message_type': 'get_proxy',
-            'qty': threads * 2
-        }
-
+    async def websocket_handler(data):
         async with websockets.connect('ws://' + server_host) as websocket:
             await websocket.send(json.dumps(data))
             response = json.loads(await websocket.recv())
@@ -679,52 +730,49 @@ class RequestToServer:
 
         return response
 
-    @staticmethod
-    async def send_message(text):
+    async def get_proxies(self, threads):
+        data = {
+            'message_type': 'get_proxy',
+            'qty': threads * 2
+        }
+
+        return await self.websocket_handler(data)
+
+    async def proxy_ban(self, proxies):
+        data = {
+            'message_type': 'bad_proxy',
+            'proxies': proxies,
+        }
+
+        return await self.websocket_handler(data)
+
+    async def send_message(self, text):
         data = {
             'message_type': 'send_custom_error',
             'shop_name': shop_name,
             'message_text': text
         }
 
-        async with websockets.connect('ws://' + server_host) as websocket:
-            await websocket.send(json.dumps(data))
-            response = json.loads(await websocket.recv())
-            await websocket.close()
+        return await self.websocket_handler(data)
 
-        return response
-
-    @staticmethod
-    async def reset_proxy(proxies):
+    async def reset_proxy(self, proxies):
         data = {
             'message_type': 'reset_proxy',
             'proxies': proxies
         }
 
-        async with websockets.connect('ws://' + server_host) as websocket:
-            await websocket.send(json.dumps(data))
-            response = json.loads(await websocket.recv())
-            await websocket.close()
+        return await self.websocket_handler(data)
 
-        return response
-
-    @staticmethod
-    async def post_error(error_message, shop):
+    async def post_error(self, error_message, shop):
         data = {
             'message_type': 'error',
             'shop_name': shop,
             'error_text': str(error_message)
         }
 
-        async with websockets.connect('ws://' + server_host) as websocket:
-            await websocket.send(json.dumps(data))
-            response = json.loads(await websocket.recv())
-            await websocket.close()
+        return await self.websocket_handler(data)
 
-        return response
-
-    @staticmethod
-    async def post_report(shop, report, average_time_by_link, time_of_code_processing, proxies):
+    async def post_report(self, shop, report, average_time_by_link, time_of_code_processing, proxies):
         data = {
             'message_type': 'send_report_text',
             'shop_name': shop,
@@ -740,32 +788,20 @@ class RequestToServer:
             'proxies': proxies
         }
 
-        async with websockets.connect('ws://' + server_host) as websocket:
-            await websocket.send(json.dumps(data))
-            response = json.loads(await websocket.recv())
-            await websocket.close()
+        return await self.websocket_handler(data)
 
-        return response
+    async def send_file(self, message_type, caption, file_path):
+        with open(file_path, 'rb') as file:
+            data = file.read()
+            encoded_data = base64.b64encode(data).decode('utf-8')
+            message = {
+                "message_type": message_type,
+                "caption": caption,
+                "file_name": file_path.split('/')[-1],
+                "file": encoded_data
+            }
 
-    @staticmethod
-    async def send_file(message_type, caption, file_path):
-        async with websockets.connect('ws://' + server_host) as websocket:
-            with open(file_path, 'rb') as file:
-                data = file.read()
-                encoded_data = base64.b64encode(data).decode('utf-8')
-                message = {
-                    "message_type": message_type,
-                    "caption": caption,
-                    "file_name": file_path.split('/')[-1],
-                    "file": encoded_data
-                }
-                json_data = json.dumps(message)
-                await websocket.send(json_data)
-
-            response = json.loads(await websocket.recv())
-            await websocket.close()
-
-        return response
+        return await self.websocket_handler(message)
 
 
 # noinspection PyArgumentList
@@ -907,7 +943,9 @@ class FilesWorker:
 
     @staticmethod
     def create_file_for_amazon(data, indices):
-        input_to_file = [["sku", "price", "quantity", "handling-time", "merchant_shipping_group_name"]]
+        input_to_file = [["sku", "product-id", "product-id-type", "price", "item-condition",
+                          "quantity", "will-ship-internationally",
+                          "handling-time", "merchant_shipping_group_name"]]
         for row in data[1:]:
             row_price = row[indices["amazon_price"]]
             row_quantity = row[indices["quantity"]]
@@ -928,12 +966,13 @@ class FilesWorker:
                 price_float = ''
                 quantity_int = 0
 
-            input_to_file.append([row[indices["sku"]], str(price_float), str(quantity_int),
-                                  row[indices["handling_time"]], row[indices["merchant_shipping_template"]]])
+            input_to_file.append([row[indices["sku"]], row[indices["asin"]], "1", str(price_float), "11",
+                                  str(quantity_int), "1", row[indices["handling_time"]],
+                                  row[indices["merchant_shipping_template"]]])
 
         with open(f'./uploads/upload.txt', 'w') as text_file:
-            for row in input_to_file:
-                text_file.write('\t'.join(row) + '\n')
+            for line in input_to_file:
+                text_file.write('\t'.join(line) + '\n')
 
     @staticmethod
     def append_to_file_intermediate(data, file_path, filename):
@@ -1052,5 +1091,5 @@ class RequestToAMZ:
             feed_res = res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
 
             return feed_res
-        except SellingApiException as ex:
-            print(f'Error code: {ex.code}, message: {ex.message}')
+        except SellingApiException:
+            return None

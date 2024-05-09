@@ -7,9 +7,9 @@ transient_vice_for_threads = 50000
 
 """ --- Amazon settings --- """
 amz_creds = {
-    "lwa_app_id": None,
-    "lwa_client_secret": None,  # Amazon Creds
-    "refresh_token": None,
+    "lwa_app_id": 'amzn1.application-oa2-client.c0a6ae54ef6042a4b65c8389cc022804',
+    "lwa_client_secret": 'amzn1.oa2-cs.v1.3eb664ee4c4ed11bd300c953694122a5eb5545b591bd4b51efd3abafa701c6c2',  # Amazon Creds
+    "refresh_token": 'Atzr|IwEBIMlRR3JPV_fBr6r2SriKRbjjdPqSq35qcJEoep3_Bm5YgWemwfPIUywR-H1atB5V6MnVOXxKzFpUHhONpRAv0MUriDNeU4N1nYj3kWn9MZKKa3KC3-SMSnQbHC1MbXVRXhYl1nRzUrazL3rwkJxbel94cdph215JrOhi2VJ6ns5nuGe5-Rrz0FKVd0qopfRlRakxQvBYAaIWBzLnuFvFDfhTj5HoCSYohF8IIBPfZxdOMNBRPwUmWJylxtv3bQcUn9RB2rP0vc2TfF6jrhzbTZitCZ0h8jcwST-6rgDJ8wewQgaANYbuqmIsTyrOjuBTSeo',
 }
 
 seller_id = None  # Seller ID
@@ -22,7 +22,8 @@ spreadsheet_id = '1oKitrZsqur0WpUPFa2eC8XGzr1O6LZMHaWDuRg7Xi4E'  # Spreadsheet I
 main_worksheet = 'EBAY'  # Main worksheet name
 exceptions_worksheet = 'Exceptions'  # Worksheet with exceptions
 exceptions_repricer_worksheet = 'Exceptions for Repricer'  # Worksheet with exceptions for "Repricer.com"
-col_names = {'sku': 'sku',
+col_names = {'asin': 'asin',
+             'sku': 'sku',
              'url': 'supplier1',
              'price': 'price ebay',
              'shipping_price': 'shipping',
