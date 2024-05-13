@@ -1,4 +1,6 @@
 import asyncio
+import json
+import os.path
 import time
 import math
 import traceback
@@ -63,10 +65,9 @@ async def exception_processing(server, error_message, retries, timeout, proxies=
         return 'reboot'
 
 
-async def processing(timeout_between_sheets_requests):
+async def processing(server_connect, timeout_between_sheets_requests):
     amz_worker = RequestToAMZ()
     file_worker = FilesWorker()
-    server_connect = RequestToServer()
 
     async with lock:
         retries = 36
@@ -123,6 +124,8 @@ async def processing(timeout_between_sheets_requests):
     # Делаем запрос на сервер для получения прокси.
     print('Getting proxies by API...')
     proxy_full_info = await collect_proxies(server_connect, threads=threads)
+    with open('my_proxies.json', 'w') as file:
+        json.dump(proxy_full_info, file, indent=4)
 
     # Добавляем резервный прокси **лучше постараться реализовать при помощи запроса на сервер.
     reserve_proxy = ['angel3223221:P7oDSPbSPz@185.228.195.119:50100']
@@ -244,7 +247,7 @@ async def processing(timeout_between_sheets_requests):
 
     print('Sending file to Amazon...')
     status_of_sending_to_amz = amz_worker.upload_to_amz('./uploads/upload.txt')
-    if status_of_sending_to_amz is None:
+    if status_of_sending_to_amz == 'error':
         ebay_parser.file_dose_not_sent_to_amz()
 
     print('Sending report...')
@@ -255,9 +258,17 @@ async def processing(timeout_between_sheets_requests):
 
 
 async def main():
+    server = RequestToServer()
     while True:
-        await processing(5)
-        await asyncio.sleep(60 * 60 * 6)
+        try:
+            await processing(server, 5)
+            await asyncio.sleep(60 * 60 * 6)
+        finally:
+            if os.path.isfile('my_proxies.json'):
+                with open('my_proxies.json', 'r') as file:
+                    proxies = json.load(file)
+
+                await server.reset_proxy(proxies)
 
 
 asyncio.run(main())

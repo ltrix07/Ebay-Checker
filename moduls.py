@@ -1088,8 +1088,8 @@ class RequestToAMZ:
             with open(file_name, 'rb') as file:
                 requests.put(url, data=file.read())
 
-            feed_res = res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
+            res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
 
-            return feed_res
+            return 'success'
         except SellingApiException:
-            return None
+            return 'error'
