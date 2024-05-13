@@ -71,7 +71,7 @@ class RequestsToEbay:
 
         self.file_worker = FilesWorker()
 
-    def file_dose_not_sent_to_amz(self):
+    def     file_dose_not_sent_to_amz(self):
         self.report['amz_updated'] = False
 
     @staticmethod
@@ -945,7 +945,7 @@ class FilesWorker:
     def create_file_for_amazon(data, indices):
         input_to_file = [["sku", "product-id", "product-id-type", "price", "item-condition",
                           "quantity", "will-ship-internationally",
-                          "handling-time", "merchant_shipping_group_name"]]
+                          "handling-time", "merchant_shipping_group_name", "add-delete"]]
         for row in data[1:]:
             row_price = row[indices["amazon_price"]]
             row_quantity = row[indices["quantity"]]
@@ -968,7 +968,7 @@ class FilesWorker:
 
             input_to_file.append([row[indices["sku"]], row[indices["asin"]], "1", str(price_float), "11",
                                   str(quantity_int), "1", row[indices["handling_time"]],
-                                  row[indices["merchant_shipping_template"]]])
+                                  row[indices["merchant_shipping_template"]], "a"])
 
         with open(f'./uploads/upload.txt', 'w') as text_file:
             for line in input_to_file:
@@ -1091,5 +1091,5 @@ class RequestToAMZ:
             res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
 
             return 'success'
-        except SellingApiException:
-            return 'error'
+        except SellingApiException as e:
+            return e
