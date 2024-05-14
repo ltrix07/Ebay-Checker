@@ -250,6 +250,8 @@ async def processing(server_connect, timeout_between_sheets_requests):
     if status_of_sending_to_amz != 'success':
         print(f'Тип ошибки - {type(status_of_sending_to_amz).__name__}. Ошибка: {status_of_sending_to_amz}')
         ebay_parser.file_dose_not_sent_to_amz()
+    else:
+        print(status_of_sending_to_amz)
 
     print('Sending report...')
     await server_connect.post_report(shop_name, report_data, average_time_for_processing_link,

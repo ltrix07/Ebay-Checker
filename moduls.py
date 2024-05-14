@@ -48,6 +48,7 @@ class RequestsToEbay:
             'stock_new': 0,
             'new_price': 0,
             'new_ship_price': 0,
+            'amz_updated': True,
             'errors': {
                 'unknown_errors': 0,
                 'no_block_with_info': 0,
@@ -58,7 +59,6 @@ class RequestsToEbay:
                 'server_close_connection': 0,
                 'error 400': 0
             },
-            'amz_updated': True
         }
         self.sku_index = indices["sku"]
         self.url_index = indices["url"]
@@ -71,7 +71,7 @@ class RequestsToEbay:
 
         self.file_worker = FilesWorker()
 
-    def     file_dose_not_sent_to_amz(self):
+    def file_dose_not_sent_to_amz(self):
         self.report['amz_updated'] = False
 
     @staticmethod
@@ -1092,5 +1092,5 @@ class RequestToAMZ:
             res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
 
             return 'success'
-        except SellingApiException as e:
+        except Exception as e:
             return e
