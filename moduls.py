@@ -372,7 +372,7 @@ class RequestsToEbay:
                 except Exception:
                     await self.server_connect.post_error(f'{sku}; На странице не была найдена цена доставки. @L_trix\n'
                                                          f'{url}', shop_name)
-                    with open('exception_page.html', 'w', encoding='utf-8') as file:
+                    with open(f'./page_errors/{sku}.html', 'w', encoding='utf-8') as file:
                         file.write(page)
                     raise Exception(f'Not valid shipping price - {sku}, {url}')
             else:
