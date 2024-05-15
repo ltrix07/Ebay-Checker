@@ -223,8 +223,7 @@ class RequestsToEbay:
             with open(f'./page_errors/{sku}.html', 'w') as file:
                 file.write(page)
 
-            output['data']['supplier'] = '{bad proxy return}'
-            await asyncio.sleep(360)
+            output['data']['supplier'] = '{proxy ban} | ' + proxy_for_check
             return output
 
         does_not_shipping = self.__does_not_ship_to(page)
