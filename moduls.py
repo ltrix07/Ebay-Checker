@@ -162,6 +162,11 @@ class RequestsToEbay:
             return None
 
     @staticmethod
+    def __not_latin(text):
+        pattern = re.compile(r'[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]', re.IGNORECASE)
+        return bool(pattern.search(text))
+
+    @staticmethod
     def __does_not_ship_to(text):
         text = text.lower()
         pattern = re.compile(r'does not ship to (.*?)</span>', re.IGNORECASE)
@@ -212,6 +217,14 @@ class RequestsToEbay:
             self.report['errors']['unknown_errors'] += 1
             raise Exception(f'Unknown error in {output}')
             # return output
+
+        latin_check = self.__not_latin(page)
+        if latin_check:
+            with open(f'./page_errors/{sku}.html', 'w') as file:
+                file.write(page)
+
+            output['data']['supplier'] = '{proxy ban} | ' + proxy_for_check
+            return output
 
         does_not_shipping = self.__does_not_ship_to(page)
         if does_not_shipping and 'united states' not in does_not_shipping:
