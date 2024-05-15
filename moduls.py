@@ -692,40 +692,39 @@ class RequestsToEbay:
         data_list = self.data  # Используем обычный список
         proxies_circle = cycle(proxies_data)
 
-
-        while data_list:  # Продолжаем, пока список не пуст
-            current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
-            data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
-                    # Выполнение задач в пуле потоков
-            tasks = []
-            user_agent = random.choice(user_agents)
-            headers['User-Agent'] = user_agent
-            for i in range(0, len(current_batch), batch_size_per_thread):
-                proxies = [next(proxies_circle) for _ in
-                           range(batch_size_per_thread)]  # Прокси для текущего пакета ссылок
-                for j, data in enumerate(current_batch[i:i + batch_size_per_thread]):
-                    proxy = proxies[j]
-                    async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:
+            while data_list:  # Продолжаем, пока список не пуст
+                current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
+                data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
+                        # Выполнение задач в пуле потоков
+                tasks = []
+                user_agent = random.choice(user_agents)
+                headers['User-Agent'] = user_agent
+                for i in range(0, len(current_batch), batch_size_per_thread):
+                    proxies = [next(proxies_circle) for _ in
+                               range(batch_size_per_thread)]  # Прокси для текущего пакета ссылок
+                    for j, data in enumerate(current_batch[i:i + batch_size_per_thread]):
+                        proxy = proxies[j]
                         tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
-            results = await asyncio.gather(*tasks)
-            all_res.extend(results)
-            proxies_for_ban = []
-            for element in all_res:
-                if element and '{proxy ban}' in element['data']['supplier']:
-                    proxies_for_ban.append(
-                        element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
-                    )
+                results = await asyncio.gather(*tasks)
+                all_res.extend(results)
+                proxies_for_ban = []
+                for element in all_res:
+                    if element and '{proxy ban}' in element['data']['supplier']:
+                        proxies_for_ban.append(
+                            element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
+                        )
 
-            if proxies_for_ban:
-                return {
-                    'status': 'reload proxy',
-                    'proxy_ids': proxies_for_ban
-                }
-            self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
-            all_res.clear()
-            processed += total_batch_size
-            print(f'Processed: [{processed} | {len(self.data)}]')
-            sys.stdout.flush()
+                if proxies_for_ban:
+                    return {
+                        'status': 'reload proxy',
+                        'proxy_ids': proxies_for_ban
+                    }
+                self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
+                all_res.clear()
+                processed += total_batch_size
+                print(f'Processed: [{processed} | {len(self.data)}]')
+                sys.stdout.flush()
 
         return {
             'status': 'success',
