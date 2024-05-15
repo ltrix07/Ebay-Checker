@@ -689,6 +689,7 @@ class RequestsToEbay:
 
         data_list = self.data  # Используем обычный список
         proxies_circle = cycle(proxies_data)
+        user_circle = cycle(user_agents)
 
         async with aiohttp.ClientSession() as session:
             while data_list:  # Продолжаем, пока список не пуст
@@ -696,14 +697,12 @@ class RequestsToEbay:
                 data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
                 # Выполнение задач в пуле потоков
                 tasks = []
-                user_agent = random.choice(user_agents)
-                headers['User-Agent'] = user_agent
-                for i in range(0, len(current_batch), batch_size_per_thread):
-                    proxies = [next(proxies_circle) for _ in
-                               range(batch_size_per_thread)]  # Прокси для текущего пакета ссылок
-                    for j, data in enumerate(current_batch[i:i + batch_size_per_thread]):
-                        proxy = proxies[j]
-                        tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth'], cookies))
+
+                for data in current_batch:
+                    headers['User-Agent'] = next(user_circle)
+                    proxy = next(proxies_circle)
+                    tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth'], cookies))
+
                 results = await asyncio.gather(*tasks)
                 all_res.extend(results)
                 proxies_for_ban = []
