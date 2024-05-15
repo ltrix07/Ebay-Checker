@@ -208,6 +208,11 @@ class RequestsToEbay:
 
                     return output
 
+        if 'eBay is unavailable in your location.' in page:
+            print('ban proxy by eBay')
+            output['data']['supplier'] = '{ban proxy by eBay}'
+            return output
+
         if 'Something went wrong. Please try your request again.' in page and \
                 '<div class="center-panel-container vi-mast"' not in page:
             output['data']['supplier'] = '{unknown error}'
@@ -511,7 +516,7 @@ class RequestsToEbay:
         return output
 
     # Функция для обработки запроса на сайт
-    async def __fetch(self, session, row, proxy_url, proxy_auth, cookies):
+    async def __fetch(self, session, row, proxy_url, proxy_auth):
         sku, url, price, shipping_price, stock, shipping_days, \
             supplier_name = (row[self.sku_index],
                              row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
@@ -550,7 +555,7 @@ class RequestsToEbay:
                 await self.server_connect.post_error(error_message, shop_name)
 
             try:
-                return await self.__get_response(session, row, proxy_url, proxy_auth, cookies)
+                return await self.__get_response(session, row, proxy_url, proxy_auth)
             except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
                 pass
             except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
@@ -560,7 +565,7 @@ class RequestsToEbay:
                         res_proxy_url, res_proxy_auth = await self.__proxy_auth(reserve_proxy)  # Авторизация прокси
                         try:
                             return await self.__get_response(session, row, res_proxy_url,
-                                                             res_proxy_auth, cookies)
+                                                             res_proxy_auth)
                         except aiohttp.client_exceptions.ClientProxyConnectionError:
                             pass
                         except TimeoutError:
@@ -613,7 +618,7 @@ class RequestsToEbay:
 
         return output
 
-    async def __get_response(self, session, row, proxy_url, proxy_auth, cookies):
+    async def __get_response(self, session, row, proxy_url, proxy_auth):
         url = row[self.url_index].split('?')[0]
         sku = row[self.sku_index]
         variation = row[self.variations_index]
@@ -623,7 +628,7 @@ class RequestsToEbay:
         try:
             async with session.get(url, proxy=proxy_url,
                                    proxy_auth=proxy_auth,
-                                   headers=headers, cookies=cookies) as response:  # При помощи сессии делаем запрос к ссылке
+                                   headers=headers) as response:  # При помощи сессии делаем запрос к ссылке
                 self.report['all_processed'] += 1
                 status = response.status
                 response_text = await response.text()
@@ -672,7 +677,6 @@ class RequestsToEbay:
 
         self.file_worker.create_file_intermediate_csv('processing', 'process.csv')
         self.file_worker.create_file_with_errors_csv('processing', 'errors.csv')
-        cookies = self.file_worker.read_json('./cookies.json')
         all_res = []
         processed = 0
 
@@ -701,7 +705,7 @@ class RequestsToEbay:
                 for data in current_batch:
                     headers['User-Agent'] = next(user_circle)
                     proxy = next(proxies_circle)
-                    tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth'], cookies))
+                    tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
                 results = await asyncio.gather(*tasks)
                 all_res.extend(results)
