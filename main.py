@@ -90,7 +90,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                                     f'по причине ошибки - {type(e).__name__}.\n' \
                                     f'\nКод перезапускается...'
                     await server_connect.post_error(error_message, shop_name)
-                    return await processing(timeout_between_sheets_requests)
+                    return await processing(server_connect, timeout_between_sheets_requests)
 
     print('Connect to Google Sheets success.')
     await asyncio.sleep(timeout_between_sheets_requests)
