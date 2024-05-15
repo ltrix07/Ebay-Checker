@@ -7,21 +7,6 @@ allow_triggers = ['CURRENTLY SOLD OUT', 'We looked everywhere.', 'Looks like thi
 
 
 headers = {
-    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'accept-language': 'en;q=1.0',
-    'cache-control': 'max-age=0',
-    'priority': 'u=0, i',
-    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'sec-ch-ua-full-version': '"124.0.6367.60"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-model': '""',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-ch-ua-platform-version': '"15.0.0"',
-    'sec-fetch-dest': 'document',
-    'sec-fetch-mode': 'navigate',
-    'sec-fetch-site': 'none',
-    'sec-fetch-user': '?1',
-    'upgrade-insecure-requests': '1',
     'User-Agent': ''
 }
 

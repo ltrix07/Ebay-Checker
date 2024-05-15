@@ -220,10 +220,8 @@ class RequestsToEbay:
 
         latin_check = self.__not_latin(page)
         if latin_check:
-            with open(f'./page_errors/{sku}.html', 'w') as file:
-                file.write(page)
-
-            output['data']['supplier'] = '{proxy ban} | ' + proxy_for_check
+            output['data']['supplier'] = '{page not on latin}'
+            print('NO LATIN')
             return output
 
         does_not_shipping = self.__does_not_ship_to(page)
