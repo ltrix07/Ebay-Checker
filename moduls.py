@@ -612,7 +612,7 @@ class RequestsToEbay:
         try:
             async with session.get(url, proxy=proxy_url,
                                    proxy_auth=proxy_auth,
-                                   headers=headers, ) as response:  # При помощи сессии делаем запрос к ссылке
+                                   headers=headers) as response:  # При помощи сессии делаем запрос к ссылке
                 self.report['all_processed'] += 1
                 status = response.status
                 response_text = await response.text()
@@ -682,7 +682,7 @@ class RequestsToEbay:
             while data_list:  # Продолжаем, пока список не пуст
                 current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
                 data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
-                # Выполнение задач в пуле потоков
+                        # Выполнение задач в пуле потоков
                 tasks = []
                 user_agent = random.choice(user_agents)
                 headers['User-Agent'] = user_agent
