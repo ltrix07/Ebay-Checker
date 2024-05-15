@@ -115,7 +115,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                                     f'по причине ошибки - {type(e).__name__}.\n' \
                                     f'\nКод перезапускается...'
                     await server_connect.post_error(error_message, shop_name)
-                    return await processing(timeout_between_sheets_requests)
+                    return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
     # Определяем кол-во потоков в зависимости от кол-ва товаров в инвентаре
@@ -154,7 +154,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
         await server_connect.proxy_ban(to_ban_info)
         print('Proxy is bad. Code reloading after 30 sec.')
         await asyncio.sleep(30)
-        return await processing(timeout_between_sheets_requests)
+        return await processing(server_connect, timeout_between_sheets_requests)
     report_data = report['report']
 
     print('Reading result...')
@@ -183,7 +183,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               f'занести информацию после чека.'
                     await server_connect.post_error(error_message, shop_name)
                     await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
-                    return await processing(timeout_between_sheets_requests)
+                    return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
     print('Uploading...')
@@ -209,7 +209,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               f'занести информацию после чека.'
                     await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
                     await server_connect.post_error(error_message, shop_name)
-                    return await processing(timeout_between_sheets_requests)
+                    return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
     # Завершаем выполнение программы и отправляем отчёт.
@@ -241,7 +241,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               'отправки на Амазон.'
                     await server_connect.send_message(message)
                     await server_connect.post_error(error_message, shop_name)
-                    return await processing(timeout_between_sheets_requests)
+                    return await processing(server_connect, timeout_between_sheets_requests)
 
     file_worker.create_file_for_amazon(updated_data, new_indices)
 
