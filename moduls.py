@@ -680,7 +680,7 @@ class RequestsToEbay:
         all_res = []
         processed = 0
 
-        batch_size_per_thread = 5  # Размер каждого пакета ссылок для одного потока
+        batch_size_per_thread = 10  # Размер каждого пакета ссылок для одного потока
         total_batch_size = threads * batch_size_per_thread  # Общий размер пакета ссылок
 
         proxies_data = []
