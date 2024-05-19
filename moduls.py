@@ -621,7 +621,10 @@ class RequestsToEbay:
     async def __get_response(self, session, row, proxy_url, proxy_auth):
         url = row[self.url_index].split('?')[0]
         sku = row[self.sku_index]
-        variation = row[self.variations_index]
+        try:
+            variation = row[self.variations_index]
+        except IndexError:
+            variation = 'false'
         price = row[self.price_index]
         shipping_price = row[self.shipping_price_index]
         qty = row[self.quantity_index]
