@@ -666,14 +666,9 @@ class RequestsToEbay:
 
     async def get_req(self, threads):
         proxies = self.add_proxies_to_list(self.proxies, [])
+        cookies = self.file_worker.read_json('./cookies.json')
 
         random.seed(datetime.now().timestamp())
-        # user_agents = []
-        # with open('./user_agents/user_agents.csv', newline='') as csvfile:
-        #     reader = csv.reader(csvfile)
-        #     next(reader)
-        #     for row in reader:
-        #         user_agents.append(row[1])
 
         self.file_worker.create_file_intermediate_csv('processing', 'process.csv')
         self.file_worker.create_file_with_errors_csv('processing', 'errors.csv')
@@ -693,9 +688,11 @@ class RequestsToEbay:
 
         data_list = self.data  # Используем обычный список
         proxies_circle = cycle(proxies_data)
-        # user_circle = cycle(user_agents)
 
         async with aiohttp.ClientSession() as session:
+            for name, value in cookies.items():
+                session.cookie_jar.update_cookies({name: value})
+
             while data_list:  # Продолжаем, пока список не пуст
                 current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
                 data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
@@ -703,7 +700,6 @@ class RequestsToEbay:
                 tasks = []
 
                 for data in current_batch:
-                    # headers['User-Agent'] = next(user_circle)
                     proxy = next(proxies_circle)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
