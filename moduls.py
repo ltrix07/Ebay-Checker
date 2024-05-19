@@ -666,7 +666,7 @@ class RequestsToEbay:
 
     async def get_req(self, threads):
         proxies = self.add_proxies_to_list(self.proxies, [])
-        cookies = self.file_worker.read_json('./cookies.json')
+        # cookies = self.file_worker.read_json('./cookies.json')
 
         random.seed(datetime.now().timestamp())
 
@@ -690,8 +690,8 @@ class RequestsToEbay:
         proxies_circle = cycle(proxies_data)
 
         async with aiohttp.ClientSession() as session:
-            for name, value in cookies.items():
-                session.cookie_jar.update_cookies({name: value})
+            # for name, value in cookies.items():
+            #     session.cookie_jar.update_cookies({name: value})
 
             while data_list:  # Продолжаем, пока список не пуст
                 current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
