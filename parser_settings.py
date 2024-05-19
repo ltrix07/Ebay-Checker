@@ -34,7 +34,8 @@ parse_keys_ship_date = [{'s': 'and "},{"_type":"TextSpan","text":"', 'e': '"'},
                         {'s': 'Estimated on or before "},{"_type":"TextSpan","text":"', 'e': '"'},
                         {'s': 'and </span><!--F/--><!--F#10[3]--><span class="ux-textspans ux-textspans--BOLD">', 'e': '<'}]
 parse_keys_supplier_name = ['//div[@class="x-sellercard-atf__info__about-seller"][1]//a[@class="ux-action"][1]//span[@class="ux-textspans ux-textspans--BOLD"]/text()']
-parse_keys_supplier_name_scalp = [{'s': 'data-clientpresentationmetadata=\'{"_ssn":"', 'e': '"'}]
+parse_keys_supplier_name_scalp = [{'s': 'data-clientpresentationmetadata=\'{"_ssn":"', 'e': '"'},
+                                  {'s': '{"_ssn":"', 'e': '"'}]
 parse_keys_part_number = []
 parse_keys_item_weight = []
 parse_keys_product_dimensions = []
