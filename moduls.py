@@ -48,7 +48,7 @@ class RequestsToEbay:
             'stock_new': 0,
             'new_price': 0,
             'new_ship_price': 0,
-            'amz_updated': True,
+            'amz_updated': None,
             'errors': {
                 'unknown_errors': 0,
                 'no_block_with_info': 0,
@@ -668,8 +668,9 @@ class RequestsToEbay:
             return self.__error_output('error 400', url, variation, sku)
 
     async def get_req(self, threads):
+        random.seed(datetime.now().timestamp())
         proxies = self.add_proxies_to_list(self.proxies, [])
-        # cookies = self.file_worker.read_json('./cookies.json')
+        user_agents = self.file_worker.read_txt('./user_agents/user_agents.txt')
 
         random.seed(datetime.now().timestamp())
 
@@ -693,9 +694,6 @@ class RequestsToEbay:
         proxies_circle = cycle(proxies_data)
 
         async with aiohttp.ClientSession() as session:
-            # for name, value in cookies.items():
-            #     session.cookie_jar.update_cookies({name: value})
-
             while data_list:  # Продолжаем, пока список не пуст
                 current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
                 data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
@@ -704,6 +702,7 @@ class RequestsToEbay:
 
                 for data in current_batch:
                     proxy = next(proxies_circle)
+                    headers['user-agent'] = random.choice(user_agents)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
                 results = await asyncio.gather(*tasks)
@@ -962,6 +961,13 @@ class FilesWorker:
             json_data = json.load(file)
 
         return json_data
+
+    @staticmethod
+    def read_txt(file_path):
+        with open(file_path, 'r') as file:
+            txt_data = file.readlines(file)
+
+        return [i.replace('\n', '') for i in txt_data]
 
     @staticmethod
     def create_file_for_amazon(data, indices):

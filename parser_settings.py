@@ -14,13 +14,12 @@ headers = {
     'referer': 'https://www.google.com/',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-model': '""',
-    'sec-ch-ua-platform': '"Linux"',
-    'sec-ch-ua-platform-version': '"6.6.15"',
     'sec-fetch-dest': 'document',
     'sec-fetch-mode': 'navigate',
     'sec-fetch-site': 'cross-site',
     'sec-fetch-user': '?1',
-    'upgrade-insecure-requests': '1'
+    'upgrade-insecure-requests': '1',
+    'user-agent': ''
 }
 
 

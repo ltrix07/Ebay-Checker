@@ -247,11 +247,11 @@ async def processing(server_connect, timeout_between_sheets_requests):
 
     print('Sending file to Amazon...')
     status_of_sending_to_amz = amz_worker.upload_to_amz('./uploads/upload.txt')
-    if 'success' not in status_of_sending_to_amz:
+    if status_of_sending_to_amz != 'success':
         print(f'Тип ошибки - {type(status_of_sending_to_amz).__name__}. Ошибка: {status_of_sending_to_amz}')
-        ebay_parser.file_dose_not_sent_to_amz()
+        report_data['amz_updated'] = False
     else:
-        print(status_of_sending_to_amz)
+        report_data['amz_updated'] = True
 
     print('Sending report...')
     await server_connect.post_report(shop_name, report_data, average_time_for_processing_link,
