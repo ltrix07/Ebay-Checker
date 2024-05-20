@@ -961,7 +961,7 @@ class FilesWorker:
     @staticmethod
     def read_txt(file_path):
         with open(file_path, 'r') as file:
-            txt_data = file.readlines(file)
+            txt_data = file.readlines()
 
         return [i.replace('\n', '') for i in txt_data]
 
