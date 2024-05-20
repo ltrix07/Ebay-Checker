@@ -670,7 +670,6 @@ class RequestsToEbay:
     async def get_req(self, threads):
         random.seed(datetime.now().timestamp())
         proxies = self.add_proxies_to_list(self.proxies, [])
-        user_agents = self.file_worker.read_txt('./user_agents/user_agents.txt')
 
         random.seed(datetime.now().timestamp())
 
@@ -699,7 +698,6 @@ class RequestsToEbay:
 
                 for data in current_batch:
                     proxy = random.choice(proxies_data)
-                    headers['user-agent'] = random.choice(user_agents)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
                 results = await asyncio.gather(*tasks)

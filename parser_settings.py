@@ -18,8 +18,7 @@ headers = {
     'sec-fetch-mode': 'navigate',
     'sec-fetch-site': 'cross-site',
     'sec-fetch-user': '?1',
-    'upgrade-insecure-requests': '1',
-    'user-agent': ''
+    'upgrade-insecure-requests': '1'
 }
 
 
