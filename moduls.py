@@ -375,7 +375,7 @@ class RequestsToEbay:
             return output
 
         shp_price = 0
-        if 'Varies' in results["main_block_info"][0].text_content() and results["ship_price_supp"] is None:
+        if 'Varies' in page and results["ship_price_supp"] is None:
             results["ship_price_supp"] = 0
             results["ship_date_supp"] = '7'
         else:
