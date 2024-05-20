@@ -48,8 +48,8 @@ async def read_file_of_processing(worker, server):
     return all_res
 
 
-async def collect_proxies(server, threads):
-    response = await server.get_proxies(threads)
+async def collect_proxies(server):
+    response = await server.get_proxies()
     proxy_full_info = response['data']['proxies']
 
     return proxy_full_info
@@ -123,7 +123,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
 
     # Делаем запрос на сервер для получения прокси.
     print('Getting proxies by API...')
-    proxy_full_info = await collect_proxies(server_connect, threads=threads)
+    proxy_full_info = await collect_proxies(server_connect)
     with open('my_proxies.json', 'w') as file:
         json.dump(proxy_full_info, file, indent=4)
 
