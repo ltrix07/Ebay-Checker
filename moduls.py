@@ -684,15 +684,12 @@ class RequestsToEbay:
 
         proxies_data = []
 
-        # Создание списка прокси с учетом удвоенного количества потоков
-        for i in range(threads * 2):
-            proxy = proxies[i]
+        # # Создание списка прокси с учетом удвоенного количества потоков
+        for proxy in proxies:
             proxy_url, proxy_auth = await self.__proxy_auth(proxy)
             proxies_data.append({'url': proxy_url, 'auth': proxy_auth})
 
         data_list = self.data  # Используем обычный список
-        proxies_circle = cycle(proxies_data)
-
         async with aiohttp.ClientSession() as session:
             while data_list:  # Продолжаем, пока список не пуст
                 current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
@@ -701,7 +698,7 @@ class RequestsToEbay:
                 tasks = []
 
                 for data in current_batch:
-                    proxy = next(proxies_circle)
+                    proxy = random.choice(proxies_data)
                     headers['user-agent'] = random.choice(user_agents)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
@@ -744,10 +741,9 @@ class RequestToServer:
 
         return response
 
-    async def get_proxies(self, threads):
+    async def get_proxies(self):
         data = {
-            'message_type': 'get_proxy',
-            'qty': threads * 2
+            'message_type': 'get_proxy_all'
         }
 
         return await self.websocket_handler(data)
