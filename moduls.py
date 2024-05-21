@@ -335,7 +335,7 @@ class RequestsToEbay:
             await asyncio.sleep(30)
             return output
 
-        latin_check = self.__not_latin(results["main_block_info"][0])
+        latin_check = self.__not_latin(results["main_block_info"][0].text_content())
         if latin_check:
             output['data']['supplier'] = '{page not on latin}'
             print('NO LATIN')
@@ -375,7 +375,7 @@ class RequestsToEbay:
             return output
 
         shp_price = 0
-        if 'Varies' in results["main_block_info"][0] and results["ship_price_supp"] is None:
+        if 'Varies' in results["main_block_info"][0].text_content() and results["ship_price_supp"] is None:
             results["ship_price_supp"] = 0
             results["ship_date_supp"] = '7'
         else:
