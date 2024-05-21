@@ -223,12 +223,6 @@ class RequestsToEbay:
             raise Exception(f'Unknown error in {output}')
             # return output
 
-        latin_check = self.__not_latin(page)
-        if latin_check:
-            output['data']['supplier'] = '{page not on latin}'
-            print('NO LATIN')
-            return output
-
         does_not_shipping = self.__does_not_ship_to(page)
         if does_not_shipping and 'united states' not in does_not_shipping:
             with open(f'./page_errors/{sku}.html', 'w') as file:
@@ -339,6 +333,12 @@ class RequestsToEbay:
                 with open(f'{dir_path}/{sku}.html', 'w') as file:
                     file.write(page)
             await asyncio.sleep(30)
+            return output
+
+        latin_check = self.__not_latin(results["main_block_info"])
+        if latin_check:
+            output['data']['supplier'] = '{page not on latin}'
+            print('NO LATIN')
             return output
 
         if not results["title"]:
