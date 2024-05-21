@@ -58,4 +58,4 @@ parse_select_div = ['//div[@class="x-msku__box-cont"]']
 parse_catalog_check = ['//div[@class="cat-wrapper"]',
                        '//div[@class="s-item s-item__pl-on-bottom"]']
 pick_up_info_check = ['//div[contains(concat(" ", normalize-space(@class), " "), " vim ") and contains(concat(" ", normalize-space(@class), " "), " d-vi-evo-region ")]/text()']
-main_block = ['//div[@class="center-panel-container vi-mast"]']
+main_block = ['//div[@class="center-panel-container vi-mast"]/text()']
