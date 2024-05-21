@@ -687,7 +687,6 @@ class RequestsToEbay:
         for proxy in proxies_from_file:
             parts = proxy.split(':')
             proxies.append(f'{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}')
-            print(proxies)
 
         proxies_data = []
 
