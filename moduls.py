@@ -681,11 +681,13 @@ class RequestsToEbay:
         batch_size_per_thread = 10  # Размер каждого пакета ссылок для одного потока
         total_batch_size = threads * batch_size_per_thread  # Общий размер пакета ссылок
 
+        user_agents = self.file_worker.read_txt('./user_agents/user_agents.txt')
         proxies_from_file = self.file_worker.read_txt('./TxtProxy.txt')
         proxies = []
         for proxy in proxies_from_file:
             parts = proxy.split(':')
             proxies.append(f'{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}')
+            print(proxies)
 
         proxies_data = []
 
@@ -703,6 +705,7 @@ class RequestsToEbay:
                 tasks = []
 
                 for data in current_batch:
+                    headers['user-agent'] = random.choice(user_agents)
                     proxy = random.choice(proxies_data)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
@@ -967,7 +970,7 @@ class FilesWorker:
         with open(file_path, 'r') as file:
             txt_data = file.readlines()
 
-        return [i.replace('\n', '') for i in txt_data]
+        return [i.replace('\n', '').replace('\t', '') for i in txt_data]
 
     @staticmethod
     def create_file_for_amazon(data, indices):
