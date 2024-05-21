@@ -669,7 +669,7 @@ class RequestsToEbay:
 
     async def get_req(self, threads):
         random.seed(datetime.now().timestamp())
-        # proxies = self.add_proxies_to_list(self.proxies, [])
+        proxies = self.add_proxies_to_list(self.proxies, [])
 
         random.seed(datetime.now().timestamp())
 
@@ -682,11 +682,6 @@ class RequestsToEbay:
         total_batch_size = threads * batch_size_per_thread  # Общий размер пакета ссылок
 
         user_agents = self.file_worker.read_txt('./user_agents/user_agents.txt')
-        proxies_from_file = self.file_worker.read_txt('./TxtProxy.txt')
-        proxies = []
-        for proxy in proxies_from_file:
-            parts = proxy.split(':')
-            proxies.append(f'{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}')
 
         proxies_data = []
 
