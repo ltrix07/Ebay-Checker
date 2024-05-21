@@ -744,7 +744,7 @@ class RequestToServer:
 
     async def get_proxies(self):
         data = {
-            'message_type': 'get_proxy_all'
+            'message_type': 'get_proxy_all_isp'
         }
 
         return await self.websocket_handler(data)
