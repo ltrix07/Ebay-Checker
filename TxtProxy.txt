@@ -1,5 +1,11 @@
-94.131.48.7:59100:skotarenko138:pTphNcpBUQ	
-74.80.255.183:59100:skotarenko138:pTphNcpBUQ	
-23.26.229.5:59100:skotarenko138:pTphNcpBUQ	
-64.113.0.192:59100:skotarenko138:pTphNcpBUQ	
-166.1.11.210:59100:skotarenko138:pTphNcpBUQ	
+161.77.1.85:59100:skotarenko138:pTphNcpBUQ	
+168.158.21.226:59100:skotarenko138:pTphNcpBUQ	
+168.158.23.110:59100:skotarenko138:pTphNcpBUQ	
+161.77.67.219:59100:skotarenko138:pTphNcpBUQ	
+139.171.65.157:59100:skotarenko138:pTphNcpBUQ	
+161.77.169.40:59100:skotarenko138:pTphNcpBUQ	
+161.77.170.32:59100:skotarenko138:pTphNcpBUQ	
+161.77.171.194:59100:skotarenko138:pTphNcpBUQ	
+161.77.168.104:59100:skotarenko138:pTphNcpBUQ	
+168.158.39.164:59100:skotarenko138:pTphNcpBUQ	
+168.158.38.142:59100:skotarenko138:pTphNcpBUQ	
