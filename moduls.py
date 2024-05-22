@@ -885,7 +885,10 @@ class RequestToGoogleSheets:
                 quantity_to_table.append([actual_from_table[index][self.indices['quantity']]])
                 ship_days_to_table.append([actual_from_table[index][self.indices['shipping_days']]])
                 supplier_to_table.append([actual_from_table[index][self.indices['supplier']]])
-                variation_to_table.append([actual_from_table[index][self.indices['variations']]])
+                try:
+                    variation_to_table.append([actual_from_table[index][self.indices['variations']]])
+                except IndexError:
+                    variation_to_table.append(['false'])
         output = {
             'price': price_to_table,
             'ship_price': ship_price_to_table,
