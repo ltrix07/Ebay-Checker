@@ -5,7 +5,6 @@ import time
 import math
 import traceback
 import signal
-import psut
 from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ
 from main_settings import google_creds_path, spreadsheet_id, main_worksheet, col_names, \
     exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads
