@@ -4,6 +4,8 @@ import os.path
 import time
 import math
 import traceback
+import signal
+import psut
 from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ
 from main_settings import google_creds_path, spreadsheet_id, main_worksheet, col_names, \
     exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads
@@ -21,11 +23,18 @@ async def collect_info_from_sheet(google_sheet):
     return main_data, indices, exceptions, exceptions_repricer
 
 
-async def cancel_all_tasks():
-    loop = asyncio.get_running_loop()
+async def cancel_all_tasks(loop=None):
+    if loop is None:
+        loop = asyncio.get_running_loop()
+
+    # Получить список всех выполняемых задач
     tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task()]
+
+    # Отменить задачи
     for task in tasks:
         task.cancel()
+
+    # Подождать завершения отмененных задач
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
@@ -98,7 +107,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                                     f'по причине ошибки - {type(e).__name__}.\n' \
                                     f'\nКод перезапускается...'
                     await server_connect.post_error(error_message, shop_name)
-                    await cancel_all_tasks()
+                    await cancel_all_tasks(loop=asyncio.get_running_loop())
                     return await processing(server_connect, timeout_between_sheets_requests)
 
     print('Connect to Google Sheets success.')
@@ -124,7 +133,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                                     f'по причине ошибки - {type(e).__name__}.\n' \
                                     f'\nКод перезапускается...'
                     await server_connect.post_error(error_message, shop_name)
-                    await cancel_all_tasks()
+                    await cancel_all_tasks(loop=asyncio.get_running_loop())
                     return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
@@ -164,7 +173,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
         await server_connect.proxy_ban(to_ban_info)
         print('Proxy is bad. Code reloading after 30 sec.')
         await asyncio.sleep(30)
-        await cancel_all_tasks()
+        await cancel_all_tasks(loop=asyncio.get_running_loop())
         return await processing(server_connect, timeout_between_sheets_requests)
     report_data = report['report']
 
@@ -194,7 +203,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               f'занести информацию после чека.'
                     await server_connect.post_error(error_message, shop_name)
                     await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
-                    await cancel_all_tasks()
+                    await cancel_all_tasks(loop=asyncio.get_running_loop())
                     return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
@@ -221,7 +230,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               f'занести информацию после чека.'
                     await server_connect.send_file('send_file_processed', caption, './processing/process.csv')
                     await server_connect.post_error(error_message, shop_name)
-                    await cancel_all_tasks()
+                    await cancel_all_tasks(loop=asyncio.get_running_loop())
                     return await processing(server_connect, timeout_between_sheets_requests)
     await asyncio.sleep(timeout_between_sheets_requests)
 
@@ -254,7 +263,7 @@ async def processing(server_connect, timeout_between_sheets_requests):
                               'отправки на Амазон.'
                     await server_connect.send_message(message)
                     await server_connect.post_error(error_message, shop_name)
-                    await cancel_all_tasks()
+                    await cancel_all_tasks(loop=asyncio.get_running_loop())
                     return await processing(server_connect, timeout_between_sheets_requests)
 
     file_worker.create_file_for_amazon(updated_data, new_indices)
