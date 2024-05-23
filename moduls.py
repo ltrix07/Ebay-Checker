@@ -829,7 +829,8 @@ class RequestToGoogleSheets:
     def get_all_info(self, worksheet):
         request = self.service.spreadsheets().values().get(
             spreadsheetId=self.spreadsheet,
-            range=worksheet
+            range=worksheet,
+            valueRenderOption='UNFORMATTED_VALUE'
         ).execute()
 
         return request['values'], self.indices
@@ -838,7 +839,8 @@ class RequestToGoogleSheets:
         try:
             request = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet,
-                range=f'{self.main_worksheet}!1:1'
+                range=f'{self.main_worksheet}!1:1',
+                valueRenderOption='UNFORMATTED_VALUE'
             ).execute()
         except google.auth.exceptions.TransportError:
             raise ConnectionError(f'Google server not response.')
