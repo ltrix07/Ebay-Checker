@@ -1,1 +1,1 @@
-pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib aiohttp gspread lxml python-amazon-sp-api websockets requests rich
+pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib aiohttp gspread lxml python-amazon-sp-api websockets requests rich xsellco-api
