@@ -12,6 +12,7 @@ import csv
 import base64
 import requests
 import random
+from xsellco_api.sync import Repricers
 from sp_api.base import Marketplaces, SellingApiException
 from sp_api.api import Feeds
 from sp_api.base.reportTypes import ReportType
@@ -48,7 +49,6 @@ class RequestsToEbay:
             'stock_new': 0,
             'new_price': 0,
             'new_ship_price': 0,
-            'amz_updated': None,
             'errors': {
                 'unknown_errors': 0,
                 'no_block_with_info': 0,
@@ -70,9 +70,6 @@ class RequestsToEbay:
         self.variations_index = indices["variations"]
 
         self.file_worker = FilesWorker()
-
-    def file_dose_not_sent_to_amz(self):
-        self.report['amz_updated'] = False
 
     @staticmethod
     def add_proxies_to_list(proxies_list_from_supplier, proxies_list_for_app):
@@ -997,7 +994,7 @@ class FilesWorker:
                 quantity_int = 0
 
             input_to_file.append([row[indices["sku"]], row[indices["asin"]], "1", str(price_float), "11",
-                                  str(quantity_int), "1", row[indices["handling_time"]],
+                                  str(quantity_int), "1", str(row[indices["handling_time"]]),
                                   row[indices["merchant_shipping_template"]], "a"])
 
         with open(f'./uploads/upload.txt', 'w') as text_file:
@@ -1100,6 +1097,62 @@ class FilesWorker:
 
         return data
 
+    @staticmethod
+    def compile_reprice_file(
+            file_path: str, data: list, indices: dict, repricer_rule: str, merchant_id: str,
+            marketplace='default', fba='default',
+    ):
+        to_csv = [['sku', 'marketplace', 'merchant_id', 'fba', 'price_min', 'price_max', 'repricer_name']]
+        for row in data[1:]:
+            price_min = round(float(row[indices.get('amazon_price')]), 2)
+            sku = row[indices.get('sku')]
+            repricer_name = ''
+
+            if repricer_rule == 'DP':
+                if price_min > 300:
+                    repricer_name = '-2.00$BRAND'
+                elif price_min > 150:
+                    repricer_name = '-1.00$BRAND'
+                elif price_min > 100:
+                    repricer_name = '-0.50$BRAND'
+                elif price_min > 50:
+                    repricer_name = '-0.20$BRAND'
+                elif price_min > 25:
+                    repricer_name = '-0.10$BRAND'
+                elif price_min > 15:
+                    repricer_name = '-0.05$BRAND'
+                else:
+                    repricer_name = '-0.01$BRAND'
+            elif repricer_rule == 'BB':
+                repricer_name = 'BUY BOX'
+            elif repricer_rule == 'BB_brand':
+                repricer_name = 'Buy Box BRAND'
+
+            if price_min > 500:
+                price_max = round(price_min * 1.15, 2)
+            elif price_min > 100:
+                price_max = round(price_min * 1.3, 2)
+            elif price_min > 30:
+                price_max = round(price_min * 1.5, 2)
+            elif price_min > 10:
+                price_max = round(price_min * 1.75, 2)
+            elif price_min > 5:
+                price_max = round(price_min * 2, 2)
+            else:
+                price_max = round(price_min * 3, 2)
+
+            if marketplace == 'default':
+                marketplace = 'AUS'
+
+            if fba == 'default':
+                fba = 'No'
+
+            to_csv.append([sku, marketplace, merchant_id, fba, price_min, price_max, repricer_name])
+
+        with open(file_path, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(to_csv)
+
 
 class RequestToAMZ:
     def __init__(self):
@@ -1123,3 +1176,24 @@ class RequestToAMZ:
             return 'success'
         except Exception as e:
             return e
+
+
+class RepricerWorker:
+    def __init__(self, api_key: str | None = None, logs: dict | None = None):
+        self.api_key = api_key
+        self.logs = logs
+
+    def __send_file_by_logs(self, file_path):
+        username = self.logs.get('username')
+        password = self.logs.get('password')
+
+        repricer = Repricers(username, password)
+        response = repricer.upload_report(file_path=file_path)
+
+        return response
+
+    def send_template(self, file_path):
+        if self.logs:
+            return self.__send_file_by_logs(file_path)
+
+        return print('You need to specify login type. By API key or by username:password')
