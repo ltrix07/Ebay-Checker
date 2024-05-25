@@ -27,7 +27,7 @@ from aiohttp import BasicAuth
 from itertools import cycle
 from parser_settings import *
 from main_settings import what_need_to_parse, col_names, shop_name, server_host, standard_stock, \
-    strategy, amz_creds
+    strategy
 
 sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 timeout = aiohttp.ClientTimeout(total=120)
@@ -1099,9 +1099,12 @@ class FilesWorker:
 
     @staticmethod
     def compile_reprice_file(
-            file_path: str, data: list, indices: dict, repricer_rule: str, merchant_id: str,
-            marketplace='default', fba='default',
-    ):
+            file_path: str, data: list, indices: dict, repricer_rule: str, merchant_id: str | None,
+            marketplace: str | None = None, fba: str | None = None,
+    ) -> str:
+        if merchant_id is None:
+            return 'no_reprice'
+
         to_csv = [['sku', 'marketplace', 'merchant_id', 'fba', 'price_min', 'price_max', 'repricer_name']]
         for row in data[1:]:
             price_min = round(float(row[indices.get('amazon_price')]), 2)
@@ -1141,10 +1144,10 @@ class FilesWorker:
             else:
                 price_max = round(price_min * 3, 2)
 
-            if marketplace == 'default':
+            if marketplace is None:
                 marketplace = 'AUS'
 
-            if fba == 'default':
+            if fba is None:
                 fba = 'No'
 
             to_csv.append([sku, marketplace, merchant_id, fba, price_min, price_max, repricer_name])
@@ -1153,12 +1156,14 @@ class FilesWorker:
             writer = csv.writer(file)
             writer.writerows(to_csv)
 
+        return 'file_collected'
+
 
 class RequestToAMZ:
-    def __init__(self):
+    def __init__(self, amz_creds):
         self.credentials = amz_creds
 
-    def upload_to_amz(self, file_name):
+    def upload_to_amz(self, file_name: str) -> str | object:
         try:
             res = Feeds(credentials=self.credentials, marketplace=Marketplaces.US)
             with open(file_name, 'rb') as file:
@@ -1179,11 +1184,10 @@ class RequestToAMZ:
 
 
 class RepricerWorker:
-    def __init__(self, api_key: str | None = None, logs: dict | None = None):
-        self.api_key = api_key
+    def __init__(self, logs: dict | None = None):
         self.logs = logs
 
-    def __send_file_by_logs(self, file_path):
+    def __send_file_by_logs(self, file_path: str) -> dict:
         username = self.logs.get('username')
         password = self.logs.get('password')
 
@@ -1192,8 +1196,9 @@ class RepricerWorker:
 
         return response
 
-    def send_template(self, file_path):
+    def send_template(self, file_path: str) -> object | None:
         if self.logs:
             return self.__send_file_by_logs(file_path)
 
-        return print('You need to specify login type. By API key or by username:password')
+        print('You need specify your authorization method')
+        return

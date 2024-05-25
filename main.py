@@ -5,11 +5,11 @@ import time
 import math
 import traceback
 import signal
-from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ
-from main_settings import google_creds_path, spreadsheet_id, main_worksheet, col_names, \
-    exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads
+from moduls import RequestsToEbay, RequestToGoogleSheets, RequestToServer, FilesWorker, RequestToAMZ, RepricerWorker
+from main_settings import (google_creds_path, spreadsheet_id, main_worksheet, col_names,
+                           exceptions_repricer_worksheet, exceptions_worksheet, shop_name, transient_vice_for_threads,
+                           repricer_logs, amz_creds, seller_id, repricer_rule)
 from parser_settings import allow_triggers
-
 
 lock = asyncio.Lock()
 errors_for_retry = ['timeout', 'TimeoutError']
@@ -82,8 +82,9 @@ async def exception_processing(server, error_message, retries, timeout, proxies=
 
 
 async def processing(server_connect, timeout_between_sheets_requests):
-    amz_worker = RequestToAMZ()
+    amz_worker = RequestToAMZ(amz_creds)
     file_worker = FilesWorker()
+    repricer_worker = RepricerWorker(repricer_logs)
 
     async with lock:
         retries = 36
@@ -274,6 +275,16 @@ async def processing(server_connect, timeout_between_sheets_requests):
         report_data['amz_updated'] = False
     else:
         report_data['amz_updated'] = True
+
+    print('Collect repricer file...')
+    status = file_worker.compile_reprice_file(
+        file_path='./uploads/uploadReprice.csv', data=updated_data, indices=new_indices,
+        repricer_rule=repricer_rule, merchant_id=seller_id
+    )
+
+    if status == 'file_collected':
+        print('Sending to Repricer...')
+        repricer_worker.send_template(file_path='./uploads/uploadReprice.csv')
 
     print('Sending report...')
     await server_connect.post_report(shop_name, report_data, average_time_for_processing_link,
