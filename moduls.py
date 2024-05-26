@@ -1107,7 +1107,11 @@ class FilesWorker:
 
         to_csv = [['sku', 'marketplace', 'merchant_id', 'fba', 'price_min', 'price_max', 'repricer_name']]
         for row in data[1:]:
-            price_min = round(float(row[indices.get('amazon_price')]), 2)
+            if row[indices.get('amazon_price')] == '':
+                price_from_sheet = 0
+            else:
+                price_from_sheet = row[indices.get('amazon_price')]
+            price_min = round(float(price_from_sheet), 2)
             sku = row[indices.get('sku')]
             repricer_name = ''
 
