@@ -1,8 +1,8 @@
 """ --- Server settings --- """
 server_host = '91.209.226.51:3000'  # Server host
 
-strategy = 'listings'
-standard_stock = 37
+strategy = 'drop'
+standard_stock = 33
 transient_vice_for_threads = 50000
 
 """ --- Amazon settings --- """
@@ -12,14 +12,14 @@ amz_creds = {
     "refresh_token": None,
 }
 
-seller_id = None  # Seller ID
-shop_name = 'Donald'  # Shop name
+seller_id = 'A1BK27H3YOSZ8C'  # Seller ID
+shop_name = 'Sheva 1'  # Shop name
 
 
 """ --- Google settings --- """
 google_creds_path = './credentials/google_creds.json'  # Google Creds
-spreadsheet_id = None  # Spreadsheet ID
-main_worksheet = None  # Main worksheet name
+spreadsheet_id = '13_zM7XdO7kvvsdic9Y6Gcc0Aed2BmGRss-wy9LepWc4'  # Spreadsheet ID
+main_worksheet = 'EBAY'  # Main worksheet name
 exceptions_worksheet = 'Exceptions'  # Worksheet with exceptions
 exceptions_repricer_worksheet = 'Exceptions for Repricer'  # Worksheet with exceptions for "Repricer.com"
 col_names = {'asin': 'asin',
@@ -52,8 +52,11 @@ col_names = {'asin': 'asin',
 
 
 """ --- Repricer settings --- """
-repricer_rule = None  # Repricer rule
-repricer_api_key = 'Basic MDk4NjUzNzFsb2xAZ21haWwuY29tOlFhejExMXFhejExMSE='  # Repricer API key
+repricer_rule = 'DP'  # Repricer rule
+repricer_logs = {
+    'username': '09865371lol@gmail.com',
+    'password': 'Qaz111qaz111!'
+}
 
 
 """ --- What information need to parse --- """
