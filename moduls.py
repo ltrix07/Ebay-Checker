@@ -387,6 +387,7 @@ class RequestsToEbay:
                                                          f'{url}', shop_name)
                     with open(f'./page_errors/{sku}.html', 'w', encoding='utf-8') as file:
                         file.write(page)
+                    print(results["ship_price_supp"])
                     raise Exception(f'Not valid shipping price - {sku}, {url}')
             else:
                 await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
