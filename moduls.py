@@ -703,18 +703,18 @@ class RequestsToEbay:
 
                 results = await asyncio.gather(*tasks)
                 all_res.extend(results)
-                proxies_for_ban = []
-                for element in all_res:
-                    if element and '{proxy ban}' in element['data']['supplier']:
-                        proxies_for_ban.append(
-                            element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
-                        )
-
-                if proxies_for_ban:
-                    return {
-                        'status': 'reload proxy',
-                        'proxy_ids': proxies_for_ban
-                    }
+                # proxies_for_ban = []
+                # for element in all_res:
+                #     if element and '{proxy ban}' in element['data']['supplier']:
+                #         proxies_for_ban.append(
+                #             element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
+                #         )
+                #
+                # if proxies_for_ban:
+                #     return {
+                #         'status': 'reload proxy',
+                #         'proxy_ids': proxies_for_ban
+                #     }
                 self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
                 all_res.clear()
                 processed += total_batch_size
