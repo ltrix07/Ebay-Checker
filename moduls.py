@@ -436,11 +436,7 @@ class RequestsToEbay:
         else:
             supplier = await self.__find_in_page_by_slicing(page, parse_keys_supplier_name_scalp)
             if supplier is None:
-                with open('exception_page.html', 'w', encoding='utf-8') as file:
-                    file.write(page)
-                await self.server_connect.post_error(f'На странице не был найден поставщик. @L_trix\n'
-                                                     f'{url}', shop_name)
-                raise Exception(f'Supplier name is None in {url}')
+                supplier = '{supplier | None}'
 
         if results["title"]:
             # title logic
