@@ -557,19 +557,6 @@ class RequestsToEbay:
             except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
                 pass
             except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
-                await asyncio.sleep(60)
-                if self.reserve_proxies is not None:  # Если указан резервный прокси
-                    for reserve_proxy in self.reserve_proxies:  # Пробуем повторный запрос с резервным прокси
-                        res_proxy_url, res_proxy_auth = await self.__proxy_auth(reserve_proxy)  # Авторизация прокси
-                        try:
-                            return await self.__get_response(session, row, res_proxy_url,
-                                                             res_proxy_auth)
-                        except aiohttp.client_exceptions.ClientProxyConnectionError:
-                            pass
-                        except TimeoutError:
-                            return self.__error_output('time out error', url, sku, variation)
-                        await asyncio.sleep(45)
-
                 await asyncio.sleep(45)
                 return self.__error_output('proxy error', url, sku, variation)
             except aiohttp.client_exceptions.ClientOSError:
