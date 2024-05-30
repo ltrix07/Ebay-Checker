@@ -146,7 +146,7 @@ class RequestsToEbay:
         return None
 
     @staticmethod
-    async def __find_in_page_by_regular(page, strs) -> object:
+    async def __find_in_page_by_regular(page, strs):
         for str_ in strs:
             match = re.search(str_, page)
             if match:
@@ -268,7 +268,7 @@ class RequestsToEbay:
             "select_div": self.__find_in_page_by_xpath(tree, parse_select_div),
             "title": self.__find_in_page_by_xpath(tree, parse_title_h1),
             "price_supp": self.__find_in_page_by_xpath(tree, parse_keys_price) if what_need_to_parse["price"] else None,
-            "ship_price_supp": self.__find_in_page_by_regular(tree, parse_keys_ship_price) if what_need_to_parse[
+            "ship_price_supp": self.__find_in_page_by_regular(page, parse_keys_ship_price) if what_need_to_parse[
                 "shipping price"] else None,
             "quantity_supp": self.__find_in_page_by_slicing(page, parse_keys_quantity) if what_need_to_parse[
                 "quantity"] else None,
