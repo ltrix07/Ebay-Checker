@@ -146,6 +146,14 @@ class RequestsToEbay:
         return None
 
     @staticmethod
+    async def __find_in_page_by_regular(page, strs) -> object:
+        for str_ in strs:
+            match = re.search(str_, page)
+            if match:
+                return match
+        return None
+
+    @staticmethod
     def __other_countries(text):
         text = text.lower()
         pattern = re.compile(r'located in: .*?(usa|us|united states)\b.*?</span>', re.IGNORECASE)
@@ -260,7 +268,7 @@ class RequestsToEbay:
             "select_div": self.__find_in_page_by_xpath(tree, parse_select_div),
             "title": self.__find_in_page_by_xpath(tree, parse_title_h1),
             "price_supp": self.__find_in_page_by_xpath(tree, parse_keys_price) if what_need_to_parse["price"] else None,
-            "ship_price_supp": self.__find_in_page_by_xpath(tree, parse_keys_ship_price) if what_need_to_parse[
+            "ship_price_supp": self.__find_in_page_by_regular(tree, parse_keys_ship_price) if what_need_to_parse[
                 "shipping price"] else None,
             "quantity_supp": self.__find_in_page_by_slicing(page, parse_keys_quantity) if what_need_to_parse[
                 "quantity"] else None,
@@ -377,21 +385,10 @@ class RequestsToEbay:
             results["ship_date_supp"] = '7'
         else:
             if results["ship_price_supp"]:
-                shipping_price = '0' if 'Free' in results["ship_price_supp"][0] \
-                    else results["ship_price_supp"][0].replace('US $', '')
-
-                try:
-                    shp_price = float(shipping_price)
-                except Exception:
-                    await self.server_connect.post_error(f'{sku}; На странице не была найдена цена доставки. @L_trix\n'
-                                                         f'{url}', shop_name)
-                    with open(f'./page_errors/{sku}.html', 'w', encoding='utf-8') as file:
-                        file.write(page)
-                    print(results["ship_price_supp"])
-                    raise Exception(f'Not valid shipping price - {sku}, {url}')
+                shipping_price = results["ship_price_supp"].group(1)
             else:
-                await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
-                                                     f'{url}', shop_name)
+                shipping_price = 0
+            print(shipping_price, url)
 
             if results["ship_date_supp"]:
                 try:
@@ -497,7 +494,7 @@ class RequestsToEbay:
         data_new = {
             'sku': sku,
             'price': price,
-            'ship_price': shp_price,
+            'ship_price': shipping_price,
             'quantity': qty,
             'ship_days': str(results["ship_date_supp"]) + 'days',
             'supplier': supplier,
