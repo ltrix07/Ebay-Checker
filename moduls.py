@@ -510,7 +510,7 @@ class RequestsToEbay:
         return output
 
     # Функция для обработки запроса на сайт
-    async def __fetch(self, session, row, proxy_url, proxy_auth):
+    async def __fetch(self, row, proxy_url, proxy_auth):
         sku, url, price, shipping_price, stock, shipping_days, \
             supplier_name = (row[self.sku_index],
                              row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
@@ -548,24 +548,25 @@ class RequestsToEbay:
                 error_message = f'ValueError In {sku}. {error}'
                 await self.server_connect.post_error(error_message, shop_name)
 
-            try:
-                return await self.__get_response(session, row, proxy_url, proxy_auth)
-            except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
-                pass
-            except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
-                await asyncio.sleep(45)
-                return self.__error_output('proxy error', url, sku, variation)
-            except aiohttp.client_exceptions.ClientOSError:
-                await asyncio.sleep(45)
-                return self.__error_output('ebay close connection', url, sku, variation)
-            except aiohttp.client_exceptions.ServerDisconnectedError:
-                print('connection error')
-                await asyncio.sleep(45)
-                return self.__error_output('server closed connection', url, sku, variation)
-            except ConnectionResetError:
-                print('ConnectionResetError')
-                await asyncio.sleep(45)
-                return self.__error_output('connection reset error', url, sku, variation)
+            async with aiohttp.ClientSession() as session:
+                try:
+                    return await self.__get_response(session, row, proxy_url, proxy_auth)
+                except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
+                    pass
+                except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
+                    await asyncio.sleep(45)
+                    return self.__error_output('proxy error', url, sku, variation)
+                except aiohttp.client_exceptions.ClientOSError:
+                    await asyncio.sleep(45)
+                    return self.__error_output('ebay close connection', url, sku, variation)
+                except aiohttp.client_exceptions.ServerDisconnectedError:
+                    print('connection error')
+                    await asyncio.sleep(45)
+                    return self.__error_output('server closed connection', url, sku, variation)
+                except ConnectionResetError:
+                    print('ConnectionResetError')
+                    await asyncio.sleep(45)
+                    return self.__error_output('connection reset error', url, sku, variation)
 
         elif 'ebay' not in url and url != col_names['url'] and len(url) > 5:
             error_message = f'Ссылка ведёт не на сайт Ebay'
@@ -678,11 +679,10 @@ class RequestsToEbay:
             # Выполнение задач в пуле потоков
             tasks = []
 
-            async with aiohttp.ClientSession() as session:
-                for data in current_batch:
-                    headers['user-agent'] = random.choice(user_agents)
-                    proxy = random.choice(proxies_data)
-                    tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
+            for data in current_batch:
+                headers['user-agent'] = random.choice(user_agents)
+                proxy = random.choice(proxies_data)
+                tasks.append(self.__fetch(data, proxy['url'], proxy['auth']))
 
             results = await asyncio.gather(*tasks)
             all_res.extend(results)
