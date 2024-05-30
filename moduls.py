@@ -386,7 +386,6 @@ class RequestsToEbay:
         else:
             if results["ship_price_supp"]:
                 shipping_price = results["ship_price_supp"].group(1)
-            print(shipping_price, url)
 
             if results["ship_date_supp"]:
                 try:
