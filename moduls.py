@@ -678,10 +678,10 @@ class RequestsToEbay:
             # Выполнение задач в пуле потоков
             tasks = []
 
-            for data in current_batch:
-                headers['user-agent'] = random.choice(user_agents)
-                proxy = random.choice(proxies_data)
-                async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:
+                for data in current_batch:
+                    headers['user-agent'] = random.choice(user_agents)
+                    proxy = random.choice(proxies_data)
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
             results = await asyncio.gather(*tasks)
