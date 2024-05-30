@@ -29,7 +29,7 @@ headers = {
 
 """ --- Parser keys --- """
 parse_keys_price = ['//div[@class="x-price-primary"][1]//span[@class="ux-textspans"]/text()']
-parse_keys_ship_price = ['//div[@class="ux-labels-values__values col-9"][1]//div[1]//span[contains(concat(" ", normalize-space(@class), " "), " ux-textspans ") and contains(concat(" ", normalize-space(@class), " "), " ux-textspans--BOLD ")]/text()',
+parse_keys_ship_price = ['//div[@class="vim d-shipping-minview mar-t-20"][1]//div[@class="ux-labels-values__values-content"][1]//span[@class="ux-textspans ux-textspans--BOLD"]/text()',
                          '//div[@class="vim d-shipping-minview mar-t-20"][1]//div[@class="ux-labels-values__values-content"][1]//span[@class="ux-textspans ux-textspans--POSITIVE ux-textspans--BOLD"]/text()']
 parse_keys_quantity = [{'s': '"maxValue":"', 'e': '"'}]
 parse_keys_ship_date = [{'s': 'and "},{"_type":"TextSpan","text":"', 'e': '"'},
