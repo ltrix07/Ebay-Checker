@@ -148,7 +148,7 @@ class RequestsToEbay:
     @staticmethod
     async def __find_in_page_by_regular(page, strs):
         for str_ in strs:
-            match = re.search(str_, page)
+            match = re.search(str_, page, re.DOTALL)
             if match:
                 return match
         return None
