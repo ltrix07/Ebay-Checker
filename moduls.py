@@ -672,37 +672,25 @@ class RequestsToEbay:
             proxies_data.append({'url': proxy_url, 'auth': proxy_auth})
 
         data_list = self.data  # Используем обычный список
-        async with aiohttp.ClientSession() as session:
-            while data_list:  # Продолжаем, пока список не пуст
-                current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
-                data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
-                # Выполнение задач в пуле потоков
-                tasks = []
+        while data_list:  # Продолжаем, пока список не пуст
+            current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
+            data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
+            # Выполнение задач в пуле потоков
+            tasks = []
 
-                for data in current_batch:
-                    headers['user-agent'] = random.choice(user_agents)
-                    proxy = random.choice(proxies_data)
+            for data in current_batch:
+                headers['user-agent'] = random.choice(user_agents)
+                proxy = random.choice(proxies_data)
+                async with aiohttp.ClientSession() as session:
                     tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
 
-                results = await asyncio.gather(*tasks)
-                all_res.extend(results)
-                # proxies_for_ban = []
-                # for element in all_res:
-                #     if element and '{proxy ban}' in element['data']['supplier']:
-                #         proxies_for_ban.append(
-                #             element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
-                #         )
-                #
-                # if proxies_for_ban:
-                #     return {
-                #         'status': 'reload proxy',
-                #         'proxy_ids': proxies_for_ban
-                #     }
-                self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
-                all_res.clear()
-                processed += total_batch_size
-                print(f'Processed: [{processed} | {len(self.data)}]')
-                sys.stdout.flush()
+            results = await asyncio.gather(*tasks)
+            all_res.extend(results)
+            self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
+            all_res.clear()
+            processed += total_batch_size
+            print(f'Processed: [{processed} | {len(self.data)}]')
+            sys.stdout.flush()
 
         return {
             'status': 'success',
