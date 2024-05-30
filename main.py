@@ -160,21 +160,6 @@ async def processing(server_connect, timeout_between_sheets_requests):
     # Вызываем метод для обработки ссылок из таблицы и парсинг страниц.
     print(f'Starting check with {threads} threads...')
     report = await ebay_parser.get_req(threads)
-    # if report['status'] == 'reload proxy':
-        # to_ban_info = []
-        # bad_proxies = list(set(report['proxy_ids']))
-        # for proxy in proxy_full_info:
-        #     if proxy['ip'] in bad_proxies:
-        #         to_ban_info.append(proxy)
-        #         proxy['comment'] = 'ban'
-        #
-        # await server_connect.reset_proxy(proxy_full_info)
-        # await asyncio.sleep(5)
-        # await server_connect.proxy_ban(to_ban_info)
-        # print('Proxy is bad. Code reloading after 30 sec.')
-        # await asyncio.sleep(30)
-        # await cancel_all_tasks(loop=asyncio.get_running_loop())
-        # return await processing(server_connect, timeout_between_sheets_requests)
     report_data = report['report']
 
     print('Reading result...')

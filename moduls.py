@@ -977,9 +977,9 @@ class FilesWorker:
                 price_float = ''
                 quantity_int = 0
 
-            input_to_file.append([row[indices["sku"]], row[indices["asin"]], "1", str(price_float), "11",
+            input_to_file.append([str(row[indices["sku"]]), str(row[indices["asin"]]), "1", str(price_float), "11",
                                   str(quantity_int), "1", str(row[indices["handling_time"]]),
-                                  row[indices["merchant_shipping_template"]], "a"])
+                                  str(row[indices["merchant_shipping_template"]]), "a"])
 
         with open(f'./uploads/upload.txt', 'w') as text_file:
             for line in input_to_file:
