@@ -7,6 +7,8 @@ import sys
 import json
 import codecs
 import re
+
+import sp_api.base.exceptions
 import websockets
 import csv
 import base64
@@ -1167,6 +1169,8 @@ class RequestToAMZ:
             res.create_feed(ReportType.POST_FLAT_FILE_INVLOADER_DATA, feed_document_id)
 
             return 'success'
+        except sp_api.base.exceptions.SellingApiForbiddenException:
+            return 'no_valid_key'
         except Exception as e:
             return e
 

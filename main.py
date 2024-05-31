@@ -255,11 +255,15 @@ async def processing(server_connect, timeout_between_sheets_requests):
 
     print('Sending file to Amazon...')
     status_of_sending_to_amz = amz_worker.upload_to_amz('./uploads/upload.txt')
-    if status_of_sending_to_amz != 'success':
-        print(f'Тип ошибки - {type(status_of_sending_to_amz).__name__}. Ошибка: {status_of_sending_to_amz}')
+    if status_of_sending_to_amz == 'success':
+        report_data['amz_updated'] = True
+    elif status_of_sending_to_amz == 'no_valid_key':
+        error_message = f'Не валидный API ключ или LWA.'
+        await server_connect.post_error(error_message, shop_name)
         report_data['amz_updated'] = False
     else:
-        report_data['amz_updated'] = True
+        print(f'Тип ошибки - {type(status_of_sending_to_amz).__name__}. Ошибка: {status_of_sending_to_amz}')
+        report_data['amz_updated'] = False
 
     print('Collect repricer file...')
     status = file_worker.compile_reprice_file(
