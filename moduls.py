@@ -940,22 +940,26 @@ class FilesWorker:
                           "quantity", "will-ship-internationally",
                           "handling-time", "merchant_shipping_group_name", "add-delete"]]
         for row in data[1:]:
-            row_price = row[indices["amazon_price"]]
-            row_quantity = row[indices["quantity"]]
             try:
-                if isinstance(row_quantity, str):
-                    quantity_int = int(row_quantity) if int(row_quantity) <= 5 else standard_stock
-                else:
-                    quantity_int = row_quantity if row_quantity <= 5 else standard_stock
-            except ValueError:
-                quantity_int = 0
+                row_price = row[indices["amazon_price"]]
+                row_quantity = row[indices["quantity"]]
+                try:
+                    if isinstance(row_quantity, str):
+                        quantity_int = int(row_quantity) if int(row_quantity) <= 5 else standard_stock
+                    else:
+                        quantity_int = row_quantity if row_quantity <= 5 else standard_stock
+                except ValueError:
+                    quantity_int = 0
 
-            try:
-                if isinstance(row_price, str):
-                    price_float = float(row_price) if float(row_price) != 0 else ''
-                else:
-                    price_float = row_price if row_price != 0 else ''
-            except ValueError:
+                try:
+                    if isinstance(row_price, str):
+                        price_float = float(row_price) if float(row_price) != 0 else ''
+                    else:
+                        price_float = row_price if row_price != 0 else ''
+                except ValueError:
+                    price_float = ''
+                    quantity_int = 0
+            except IndexError:
                 price_float = ''
                 quantity_int = 0
 
