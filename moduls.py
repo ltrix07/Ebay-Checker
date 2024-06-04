@@ -507,66 +507,69 @@ class RequestsToEbay:
 
     # Функция для обработки запроса на сайт
     async def __fetch(self, row, proxy_url, proxy_auth):
-        sku, url, price, shipping_price, stock, shipping_days, \
-            supplier_name = (row[self.sku_index],
-                             row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
-                             row[self.price_index], row[self.shipping_price_index], row[self.quantity_index],
-                             row[self.shipping_days_index], row[self.supplier_index])
         try:
-            variation = row[self.variations_index] if row[self.variations_index] != '' else 'false'
-        except IndexError:
-            variation = 'false'
-
-        if url != '' and 'ebay' in url and url != col_names['url']:  # Если ссылка пустая, не пытаемся к ней стучаться
-            if url.split('/')[0] == 'ebay.com':
-                url = 'https://www.' + url
-
-            """Проверяем находится ли SKU в исключениях или является оно вариацией,
-                            если да, то возвращаем словарь с прошлыми значениями строки"""
+            sku, url, price, shipping_price, stock, shipping_days, \
+                supplier_name = (row[self.sku_index],
+                                 row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
+                                 row[self.price_index], row[self.shipping_price_index], row[self.quantity_index],
+                                 row[self.shipping_days_index], row[self.supplier_index])
             try:
-                if (sku != col_names['sku'] and sku in self.exceptions) or str(variation).lower() == 'true':
-                    output = {
-                        'url': url,
-                        'data': {
-                            'sku': sku,
-                            'price': price,
-                            'ship_price': shipping_price,
-                            'quantity': stock,
-                            'ship_days': shipping_days,
-                            'supplier': supplier_name,
-                            'variation': variation
-                        },
-                        'errors': []
-                    }
+                variation = row[self.variations_index] if row[self.variations_index] != '' else 'false'
+            except IndexError:
+                variation = 'false'
 
-                    return output
-            except ValueError as error:
-                error_message = f'ValueError In {sku}. {error}'
-                await self.server_connect.post_error(error_message, shop_name)
+            if url != '' and 'ebay' in url and url != col_names['url']:  # Если ссылка пустая, не пытаемся к ней стучаться
+                if url.split('/')[0] == 'ebay.com':
+                    url = 'https://www.' + url
 
-            async with aiohttp.ClientSession() as session:
+                """Проверяем находится ли SKU в исключениях или является оно вариацией,
+                                если да, то возвращаем словарь с прошлыми значениями строки"""
                 try:
-                    return await self.__get_response(session, row, proxy_url, proxy_auth)
-                except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
-                    pass
-                except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
-                    await asyncio.sleep(45)
-                    return self.__error_output('proxy error', url, sku, variation)
-                except aiohttp.client_exceptions.ClientOSError:
-                    await asyncio.sleep(45)
-                    return self.__error_output('ebay close connection', url, sku, variation)
-                except aiohttp.client_exceptions.ServerDisconnectedError:
-                    print('connection error')
-                    await asyncio.sleep(45)
-                    return self.__error_output('server closed connection', url, sku, variation)
-                except ConnectionResetError:
-                    print('ConnectionResetError')
-                    await asyncio.sleep(45)
-                    return self.__error_output('connection reset error', url, sku, variation)
+                    if (sku != col_names['sku'] and sku in self.exceptions) or str(variation).lower() == 'true':
+                        output = {
+                            'url': url,
+                            'data': {
+                                'sku': sku,
+                                'price': price,
+                                'ship_price': shipping_price,
+                                'quantity': stock,
+                                'ship_days': shipping_days,
+                                'supplier': supplier_name,
+                                'variation': variation
+                            },
+                            'errors': []
+                        }
 
-        elif 'ebay' not in url and url != col_names['url'] and len(url) > 5:
-            error_message = f'Ссылка ведёт не на сайт Ebay'
-            self.file_worker.append_error_to_file_with_errors('processing', 'errors.csv', sku, error_message)
+                        return output
+                except ValueError as error:
+                    error_message = f'ValueError In {sku}. {error}'
+                    await self.server_connect.post_error(error_message, shop_name)
+
+                async with aiohttp.ClientSession() as session:
+                    try:
+                        return await self.__get_response(session, row, proxy_url, proxy_auth)
+                    except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
+                        pass
+                    except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
+                        await asyncio.sleep(45)
+                        return self.__error_output('proxy error', url, sku, variation)
+                    except aiohttp.client_exceptions.ClientOSError:
+                        await asyncio.sleep(45)
+                        return self.__error_output('ebay close connection', url, sku, variation)
+                    except aiohttp.client_exceptions.ServerDisconnectedError:
+                        print('connection error')
+                        await asyncio.sleep(45)
+                        return self.__error_output('server closed connection', url, sku, variation)
+                    except ConnectionResetError:
+                        print('ConnectionResetError')
+                        await asyncio.sleep(45)
+                        return self.__error_output('connection reset error', url, sku, variation)
+
+            elif 'ebay' not in url and url != col_names['url'] and len(url) > 5:
+                error_message = f'Ссылка ведёт не на сайт Ebay'
+                self.file_worker.append_error_to_file_with_errors('processing', 'errors.csv', sku, error_message)
+        except IndexError:
+            return None
 
     def __error_output(self, message, url, sku, variation):
         output = {
