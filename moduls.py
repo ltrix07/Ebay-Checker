@@ -148,6 +148,14 @@ class RequestsToEbay:
         return None
 
     @staticmethod
+    async def __find_in_page_by_regular(page, strs):
+        for str_ in strs:
+            match = re.search(str_, page, re.DOTALL)
+            if match:
+                return match
+        return None
+
+    @staticmethod
     def __other_countries(text):
         text = text.lower()
         pattern = re.compile(r'located in: .*?(usa|us|united states)\b.*?</span>', re.IGNORECASE)
@@ -262,7 +270,7 @@ class RequestsToEbay:
             "select_div": self.__find_in_page_by_xpath(tree, parse_select_div),
             "title": self.__find_in_page_by_xpath(tree, parse_title_h1),
             "price_supp": self.__find_in_page_by_xpath(tree, parse_keys_price) if what_need_to_parse["price"] else None,
-            "ship_price_supp": self.__find_in_page_by_xpath(tree, parse_keys_ship_price) if what_need_to_parse[
+            "ship_price_supp": self.__find_in_page_by_regular(page, parse_keys_ship_price) if what_need_to_parse[
                 "shipping price"] else None,
             "quantity_supp": self.__find_in_page_by_slicing(page, parse_keys_quantity) if what_need_to_parse[
                 "quantity"] else None,
@@ -373,27 +381,13 @@ class RequestsToEbay:
 
             return output
 
-        shp_price = 0
+        shipping_price = 0
         if 'Varies' in results["main_block_info"][0].text_content() and results["ship_price_supp"] is None:
             results["ship_price_supp"] = 0
             results["ship_date_supp"] = '7'
         else:
             if results["ship_price_supp"]:
-                shipping_price = '0' if 'Free' in results["ship_price_supp"][0] \
-                    else results["ship_price_supp"][0].replace('US $', '')
-
-                try:
-                    shp_price = float(shipping_price)
-                except Exception:
-                    await self.server_connect.post_error(f'{sku}; На странице не была найдена цена доставки. @L_trix\n'
-                                                         f'{url}', shop_name)
-                    with open(f'./page_errors/{sku}.html', 'w', encoding='utf-8') as file:
-                        file.write(page)
-                    print(results["ship_price_supp"])
-                    raise Exception(f'Not valid shipping price - {sku}, {url}')
-            else:
-                await self.server_connect.post_error(f'На странице не была найдена цена доставки. @L_trix\n'
-                                                     f'{url}', shop_name)
+                shipping_price = results["ship_price_supp"].group(1)
 
             if results["ship_date_supp"]:
                 try:
@@ -499,7 +493,7 @@ class RequestsToEbay:
         data_new = {
             'sku': sku,
             'price': price,
-            'ship_price': shp_price,
+            'ship_price': shipping_price,
             'quantity': qty,
             'ship_days': str(results["ship_date_supp"]) + 'days',
             'supplier': supplier,
@@ -512,7 +506,7 @@ class RequestsToEbay:
         return output
 
     # Функция для обработки запроса на сайт
-    async def __fetch(self, session, row, proxy_url, proxy_auth):
+    async def __fetch(self, row, proxy_url, proxy_auth):
         sku, url, price, shipping_price, stock, shipping_days, \
             supplier_name = (row[self.sku_index],
                              row[self.url_index].split('?')[0].replace(' ', '').replace('\n', '').replace('\t', ''),
@@ -550,24 +544,25 @@ class RequestsToEbay:
                 error_message = f'ValueError In {sku}. {error}'
                 await self.server_connect.post_error(error_message, shop_name)
 
-            try:
-                return await self.__get_response(session, row, proxy_url, proxy_auth)
-            except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
-                pass
-            except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
-                await asyncio.sleep(45)
-                return self.__error_output('proxy error', url, sku, variation)
-            except aiohttp.client_exceptions.ClientOSError:
-                await asyncio.sleep(45)
-                return self.__error_output('ebay close connection', url, sku, variation)
-            except aiohttp.client_exceptions.ServerDisconnectedError:
-                print('connection error')
-                await asyncio.sleep(45)
-                return self.__error_output('server closed connection', url, sku, variation)
-            except ConnectionResetError:
-                print('ConnectionResetError')
-                await asyncio.sleep(45)
-                return self.__error_output('connection reset error', url, sku, variation)
+            async with aiohttp.ClientSession() as session:
+                try:
+                    return await self.__get_response(session, row, proxy_url, proxy_auth)
+                except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
+                    pass
+                except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
+                    await asyncio.sleep(45)
+                    return self.__error_output('proxy error', url, sku, variation)
+                except aiohttp.client_exceptions.ClientOSError:
+                    await asyncio.sleep(45)
+                    return self.__error_output('ebay close connection', url, sku, variation)
+                except aiohttp.client_exceptions.ServerDisconnectedError:
+                    print('connection error')
+                    await asyncio.sleep(45)
+                    return self.__error_output('server closed connection', url, sku, variation)
+                except ConnectionResetError:
+                    print('ConnectionResetError')
+                    await asyncio.sleep(45)
+                    return self.__error_output('connection reset error', url, sku, variation)
 
         elif 'ebay' not in url and url != col_names['url'] and len(url) > 5:
             error_message = f'Ссылка ведёт не на сайт Ebay'
@@ -674,37 +669,24 @@ class RequestsToEbay:
             proxies_data.append({'url': proxy_url, 'auth': proxy_auth})
 
         data_list = self.data  # Используем обычный список
-        async with aiohttp.ClientSession() as session:
-            while data_list:  # Продолжаем, пока список не пуст
-                current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
-                data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
-                # Выполнение задач в пуле потоков
-                tasks = []
+        while data_list:  # Продолжаем, пока список не пуст
+            current_batch = data_list[:total_batch_size]  # Получаем текущий общий пакет ссылок
+            data_list = data_list[total_batch_size:]  # Обновляем список, удаляя обработанные элементы
+            # Выполнение задач в пуле потоков
+            tasks = []
 
-                for data in current_batch:
-                    headers['user-agent'] = random.choice(user_agents)
-                    proxy = random.choice(proxies_data)
-                    tasks.append(self.__fetch(session, data, proxy['url'], proxy['auth']))
+            for data in current_batch:
+                headers['user-agent'] = random.choice(user_agents)
+                proxy = random.choice(proxies_data)
+                tasks.append(self.__fetch(data, proxy['url'], proxy['auth']))
 
-                results = await asyncio.gather(*tasks)
-                all_res.extend(results)
-                # proxies_for_ban = []
-                # for element in all_res:
-                #     if element and '{proxy ban}' in element['data']['supplier']:
-                #         proxies_for_ban.append(
-                #             element['data']['supplier'].split('|')[1].strip().split('/')[2].split(':')[0]
-                #         )
-                #
-                # if proxies_for_ban:
-                #     return {
-                #         'status': 'reload proxy',
-                #         'proxy_ids': proxies_for_ban
-                #     }
-                self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
-                all_res.clear()
-                processed += total_batch_size
-                print(f'Processed: [{processed} | {len(self.data)}]')
-                sys.stdout.flush()
+            results = await asyncio.gather(*tasks)
+            all_res.extend(results)
+            self.file_worker.append_to_file_intermediate(all_res, 'processing', 'process.csv')
+            all_res.clear()
+            processed += total_batch_size
+            print(f'Processed: [{processed} | {len(self.data)}]')
+            sys.stdout.flush()
 
         return {
             'status': 'success',
@@ -960,22 +942,26 @@ class FilesWorker:
                           "quantity", "will-ship-internationally",
                           "handling-time", "merchant_shipping_group_name", "add-delete"]]
         for row in data[1:]:
-            row_price = row[indices["amazon_price"]]
-            row_quantity = row[indices["quantity"]]
             try:
-                if isinstance(row_quantity, str):
-                    quantity_int = int(row_quantity) if int(row_quantity) <= 5 else standard_stock
-                else:
-                    quantity_int = row_quantity if row_quantity <= 5 else standard_stock
-            except ValueError:
-                quantity_int = 0
+                row_price = row[indices["amazon_price"]]
+                row_quantity = row[indices["quantity"]]
+                try:
+                    if isinstance(row_quantity, str):
+                        quantity_int = int(row_quantity) if int(row_quantity) <= 5 else standard_stock
+                    else:
+                        quantity_int = row_quantity if row_quantity <= 5 else standard_stock
+                except ValueError:
+                    quantity_int = 0
 
-            try:
-                if isinstance(row_price, str):
-                    price_float = float(row_price) if float(row_price) != 0 else ''
-                else:
-                    price_float = row_price if row_price != 0 else ''
-            except ValueError:
+                try:
+                    if isinstance(row_price, str):
+                        price_float = float(row_price) if float(row_price) != 0 else ''
+                    else:
+                        price_float = row_price if row_price != 0 else ''
+                except ValueError:
+                    price_float = ''
+                    quantity_int = 0
+            except IndexError:
                 price_float = ''
                 quantity_int = 0
 
