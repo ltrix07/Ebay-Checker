@@ -227,8 +227,7 @@ class RequestsToEbay:
                 file.write(page)
 
             self.report['errors']['unknown_errors'] += 1
-            raise Exception(f'Unknown error in {output}')
-            # return output
+            return output
 
         does_not_shipping = self.__does_not_ship_to(page)
         if does_not_shipping and 'united states' not in does_not_shipping:
