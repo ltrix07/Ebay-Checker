@@ -827,7 +827,10 @@ class RequestToGoogleSheets:
     def collect_to_table_by_index(self, data):
         self.indices = self.get_index_of_column()
         actual_from_table = self.get_all_info(self.main_worksheet)[0]
-        actual_sku = [row[self.indices['sku']] for row in actual_from_table]
+        try:
+            actual_sku = [row[self.indices['sku']] for row in actual_from_table]
+        except IndexError:
+            actual_sku = ''
         sku_from_data = [item['data']['sku'] for item in data if type(item) is dict]
         price_to_table = []
         ship_price_to_table = []
