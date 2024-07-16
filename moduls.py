@@ -7,7 +7,6 @@ import sys
 import json
 import codecs
 import re
-
 import sp_api.base.exceptions
 import websockets
 import csv
@@ -1144,9 +1143,30 @@ class RequestToAMZ:
     def __init__(self, amz_creds):
         self.credentials = amz_creds
 
+    def _refresh_access_token(self):
+        url = 'https://api.amazon.com/auth/o2/token'
+        payload = {
+            'grant_type': 'refresh_token',
+            'client_id': self.credentials.get('lwa_app_id'),
+            'client_secret': self.credentials.get('lwa_client_secret'),
+            'refresh_token': self.credentials.get('refresh_token')
+        }
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        response = requests.post(url, data=payload, headers=headers)
+
+        if response.status_code == 200:
+            tokens = response.json()
+            return tokens['access_token']
+        else:
+            raise Exception('Failed to refresh token ' + response.text)
+
     def upload_to_amz(self, file_name: str) -> str | object:
+        new_token = self._refresh_access_token()
         try:
-            res = Feeds(credentials=self.credentials, marketplace=Marketplaces.US)
+            res = Feeds(credentials=self.credentials, marketplace=Marketplaces.US, restricted_data_token=new_token)
             with open(file_name, 'rb') as file:
                 create_file = res.create_feed_document(file=file,
                                                        content_type='text/tab-separated-values; charset=UTF-8')
