@@ -1,5 +1,7 @@
 import os
 import asyncio
+import time
+
 import aiohttp
 import google.auth.exceptions
 import gspread.utils
@@ -1143,8 +1145,8 @@ class RequestToAMZ:
     def __init__(self, amz_creds):
         self.credentials = amz_creds
 
-    def _refresh_access_token(self):
-        url = 'https://api.amazon.com/auth/o2/token'
+    def _refresh_access_token(self, retries=5, delay=5):
+        url = 'https://api.amazon.com/auth/o2   /token'
         payload = {
             'grant_type': 'refresh_token',
             'client_id': self.credentials.get('lwa_app_id'),
@@ -1155,13 +1157,17 @@ class RequestToAMZ:
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
-        response = requests.post(url, data=payload, headers=headers)
-
-        if response.status_code == 200:
-            tokens = response.json()
-            return tokens['access_token']
-        else:
-            raise Exception('Failed to refresh token ' + response.text)
+        for _ in range(retries):
+            try:
+                response = requests.post(url, data=payload, headers=headers)
+                if response.status_code == 200:
+                    tokens = response.json()
+                    return tokens['access_token']
+                else:
+                    return None
+            except (ConnectionError, TimeoutError) as e:
+                print(f'Connection failed: {e}.')
+                time.sleep(delay)
 
     def upload_to_amz(self, file_name: str) -> str | object:
         new_token = self._refresh_access_token()
