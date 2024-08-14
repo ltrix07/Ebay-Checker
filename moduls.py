@@ -803,6 +803,15 @@ class RequestToGoogleSheets:
 
         return request['values'], self.indices
 
+    def get_batch(self, ranges: list):
+        response = self.service.spreadsheets().values().batchGet(
+            spreadsheetId=self.spreadsheet,
+            ranges=ranges,
+            valueRenderOption='UNFORMATTED_VALUE'
+        ).execute()
+
+        return response
+
     def get_headers(self):
         try:
             request = self.service.spreadsheets().values().get(
@@ -875,31 +884,31 @@ class RequestToGoogleSheets:
     def update_table(self, data):
         body_data = []
 
-        if what_need_to_parse["price"]:
+        if what_need_to_parse["price"] and len(data['price']) > 0:
             body_data.append({
                 'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["price"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["price"]), self.indices["price"] + 1)}',
                 'values': data['price']
             })
 
-        if what_need_to_parse["shipping price"]:
+        if what_need_to_parse["shipping price"] and len(data['ship_price']) > 0:
             body_data.append({
                 'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["shipping_price"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["ship_price"]), self.indices["shipping_price"] + 1)}',
                 'values': data['ship_price']
             })
 
-        if what_need_to_parse["quantity"]:
+        if what_need_to_parse["quantity"] and len(data['quantity']) > 0:
             body_data.append({
                 'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["quantity"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["quantity"]), self.indices["quantity"] + 1)}',
                 'values': data['quantity']
             })
 
-        if what_need_to_parse["shipping days"]:
+        if what_need_to_parse["shipping days"] and len(data['ship_days']) > 0:
             body_data.append({
                 'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["shipping_days"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["ship_days"]), self.indices["shipping_days"] + 1)}',
                 'values': data['ship_days']
             })
 
-        if what_need_to_parse["supplier name"]:
+        if what_need_to_parse["supplier name"] and len(data['supplier']) > 0:
             body_data.append({
                 'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["supplier"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["supplier"]), self.indices["supplier"] + 1)}',
                 'values': data['supplier']
