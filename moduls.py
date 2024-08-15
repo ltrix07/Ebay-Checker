@@ -985,6 +985,9 @@ class FilesWorker:
                                   str(quantity_int), "1", str(row[indices["handling_time"]]),
                                   str(row[indices["merchant_shipping_template"]]), "a"])
 
+        if not os.path.isdir('./uploads'):
+            os.mkdir('./uploads')
+
         with open(f'./uploads/upload.txt', 'w') as text_file:
             for line in input_to_file:
                 text_file.write('\t'.join(line) + '\n')
