@@ -914,10 +914,11 @@ class RequestToGoogleSheets:
                 'values': data['supplier']
             })
 
-        body_data.append({
-            'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["variations"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["variation"]), self.indices["variations"] + 1)}',
-            'values': data['variation']
-        })
+        if len(data['variation']) > 0:
+            body_data.append({
+                'range': f'{self.main_worksheet}!{gspread.utils.rowcol_to_a1(1, self.indices["variations"] + 1)}:{gspread.utils.rowcol_to_a1(len(data["variation"]), self.indices["variations"] + 1)}',
+                'values': data['variation']
+            })
 
         body = {
             'valueInputOption': 'USER_ENTERED',
