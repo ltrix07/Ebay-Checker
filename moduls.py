@@ -1,7 +1,6 @@
 import os
 import asyncio
 import time
-
 import aiohttp
 import google.auth.exceptions
 import gspread.utils
@@ -187,7 +186,7 @@ class RequestsToEbay:
 
         return None
 
-    async def __parser_page(self, page, row, proxy_for_check):
+    async def parser_page(self, page, row, proxy_for_check):
         sku, url, price_previous, shipping_price_previous, quantity_previous, shipping_days_previous, \
             supplier_name = row[self.sku_index], row[self.url_index].split('?')[0], \
             row[self.price_index], row[self.shipping_price_index], row[self.quantity_index], \
@@ -407,6 +406,8 @@ class RequestsToEbay:
                     await self.server_connect.post_error(f'На странице не была найдена цена. @L_trix\n'
                                                          f'{url}', shop_name)
                     raise Exception(f'Price is None in {url}')
+            except ValueError:
+                price = results["price_supp"][0]
             except Exception as error:
                 with open('exception_page.html', 'w', encoding='utf-8') as file:
                     file.write(page)
@@ -638,7 +639,7 @@ class RequestsToEbay:
 
                     return output
                 else:
-                    return await self.__parser_page(response_text, row, proxy_url)
+                    return await self.parser_page(response_text, row, proxy_url)
         except TimeoutError:
             return self.__error_output('time out error', url, variation, sku)
         except aiohttp.client_exceptions.ClientHttpProxyError:
