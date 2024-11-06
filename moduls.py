@@ -982,9 +982,12 @@ class FilesWorker:
                 price_float = ''
                 quantity_int = 0
 
-            input_to_file.append([str(row[indices["sku"]]), str(row[indices["asin"]]), "1", str(price_float), "11",
-                                  str(quantity_int), "1", str(row[indices["handling_time"]]),
-                                  str(row[indices["merchant_shipping_template"]]), "a"])
+            try:
+                input_to_file.append([str(row[indices["sku"]]), str(row[indices["asin"]]), "1", str(price_float), "11",
+                                      str(quantity_int), "1", str(row[indices["handling_time"]]),
+                                      str(row[indices["merchant_shipping_template"]]), "a"])
+            except IndexError:
+                continue
 
         if not os.path.isdir('./uploads'):
             os.mkdir('./uploads')
