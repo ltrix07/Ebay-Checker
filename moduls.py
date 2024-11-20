@@ -88,7 +88,7 @@ class RequestsToEbay:
     def __add_to_report(self, new_data, previous_price, previous_shipping_price, previous_qty):
         args = [previous_qty, previous_price, previous_shipping_price]
         for arg in args:
-            if type(arg) is not dict:
+            if not isinstance(arg, dict):
                 try:
                     float(arg)
                 except ValueError:
@@ -96,14 +96,17 @@ class RequestsToEbay:
                     previous_price = 0
                     previous_shipping_price = 0
 
-        if float(previous_qty) == 0 and int(new_data["data"]["quantity"]) != float(previous_qty):
-            self.report["stock_new"] += 1
-        if float(previous_qty) != 0 and int(new_data["data"]["quantity"]) == 0:
-            self.report["nones_new"] += 1
-        if float(previous_price) != float(new_data["data"]["price"]):
-            self.report["new_price"] += 1
-        if float(previous_shipping_price) != float(new_data["data"]["ship_price"]):
-            self.report["new_ship_price"] += 1
+        try:
+            if float(previous_qty) == 0 and int(new_data["data"]["quantity"]) != float(previous_qty):
+                self.report["stock_new"] += 1
+            if float(previous_qty) != 0 and int(new_data["data"]["quantity"]) == 0:
+                self.report["nones_new"] += 1
+            if float(previous_price) != float(new_data["data"]["price"]):
+                self.report["new_price"] += 1
+            if float(previous_shipping_price) != float(new_data["data"]["ship_price"]):
+                self.report["new_ship_price"] += 1
+        except ValueError:
+            return
 
     # Функция для авторизации прокси
     @staticmethod
@@ -549,8 +552,8 @@ class RequestsToEbay:
                 async with aiohttp.ClientSession() as session:
                     try:
                         return await self.__get_response(session, row, proxy_url, proxy_auth)
-                    except aiohttp.client_exceptions.InvalidURL:  # В случае ошибки плохой ссылки выводим ссылку с ошибкой
-                        pass
+                    except asyncio.TimeoutError:
+                        return self.__error_output('asyncio timeout', url, sku, variation)
                     except aiohttp.client_exceptions.ClientProxyConnectionError:  # Случай при плохом ответе прокси
                         await asyncio.sleep(45)
                         return self.__error_output('proxy error', url, sku, variation)
