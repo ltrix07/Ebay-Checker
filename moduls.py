@@ -312,7 +312,7 @@ class RequestsToEbay:
         try:
             for key, task in tasks.items():
                 if task is not None:
-                    results[key] = await asyncio.create_task(task)
+                    results[key] = await task
                 else:
                     results[key] = None
         except Exception as e:
