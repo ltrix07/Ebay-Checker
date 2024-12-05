@@ -28,7 +28,7 @@ headers = {
 
 
 """ --- Parser keys --- """
-parse_keys_price = ['//div[@class="x-price-primary"][1]//span[@class="ux-textspans"]/text()']
+parse_keys_price = [r'"price":"([\d.]+)"']
 parse_keys_ship_price = [r'class=ux-labels-values__labels-content.*?<span class=ux-textspans>Shipping.*?class="ux-textspans ux-textspans--BOLD">\s*US\s*\$(\d+(?:\.\d{2})?)<\/span>']
 parse_keys_quantity = [{'s': '"maxValue":"', 'e': '"'}]
 parse_keys_ship_date = [{'s': 'and "},{"_type":"TextSpan","text":"', 'e': '"'},

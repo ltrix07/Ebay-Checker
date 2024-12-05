@@ -14,7 +14,10 @@ from moduls import RequestsToEbay
      'class=ux-labels-values__values-content><div><!--F#0--><!--F#f_1--><!--F#11[0]--><span class="ux-textspans ux-te'
      'xtspans--BOLD">US $5.25</span><!--F/--><!--F#11[1]--><span class=ux-textspans>&nbsp;</span><!--F/--><!--F#11[2]'
      '--><span class=ux-textspans>Standard Shipping</span><!--F/--><!--F#11[3]--><span class=ux-textspans>. </span>'
-     '<!--F/-->', 'ship_price', 5.25)
+     '<!--F/-->', 'ship_price', 5.25),
+    ('ck","priceCurrency":"USD","price":"6.98"},"aggregateRating":{"@type":"AggregateRating","ratingValue":"4.83",'
+     '"ratingCount":"6"},"gtin13":"736530623388","mpn":"13211546730, V137000030","model":"ES-1000 ES-2000 ES-210 '
+     'ES-211 ES-', 'price', 6.98)
 ])
 async def test_parser_page(page_slice, elem_key, except_value):
     row_mock = MagicMock()

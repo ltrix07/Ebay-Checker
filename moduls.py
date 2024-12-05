@@ -14,6 +14,7 @@ import csv
 import base64
 import requests
 import random
+from typing import Optional
 from xsellco_api.sync import Repricers
 from sp_api.base import Marketplaces, SellingApiException
 from sp_api.api import Feeds
@@ -151,7 +152,7 @@ class RequestsToEbay:
         return None
 
     @staticmethod
-    async def __find_in_page_by_regular(page, strs):
+    async def __find_in_page_by_regular(page, strs) -> Optional[re.Match]:
         for str_ in strs:
             match = re.search(str_, page, re.DOTALL)
             if match:
@@ -271,7 +272,7 @@ class RequestsToEbay:
             "catalog_div": self.__find_in_page_by_xpath(tree, parse_catalog_check),
             "select_div": self.__find_in_page_by_xpath(tree, parse_select_div),
             "title": self.__find_in_page_by_xpath(tree, parse_title_h1),
-            "price_supp": self.__find_in_page_by_xpath(tree, parse_keys_price) if what_need_to_parse["price"] else None,
+            "price_supp": self.__find_in_page_by_regular(page, parse_keys_price) if what_need_to_parse["price"] else None,
             "ship_price_supp": self.__find_in_page_by_regular(page, parse_keys_ship_price) if what_need_to_parse[
                 "shipping price"] else None,
             "quantity_supp": self.__find_in_page_by_slicing(page, parse_keys_quantity) if what_need_to_parse[
@@ -404,13 +405,13 @@ class RequestsToEbay:
         else:
             try:
                 if results["price_supp"]:
-                    price = float(results["price_supp"][0].replace('US $', '').replace('/ea', '').replace(',', ''))
+                    price = float(results["price_supp"].group(1))
                 else:
                     await self.server_connect.post_error(f'На странице не была найдена цена. @L_trix\n'
                                                          f'{url}', shop_name)
                     raise Exception(f'Price is None in {url}')
             except ValueError:
-                price = results["price_supp"][0]
+                price = results["price_supp"].group(1)
             except Exception as error:
                 with open('exception_page.html', 'w', encoding='utf-8') as file:
                     file.write(page)
