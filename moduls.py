@@ -407,9 +407,7 @@ class RequestsToEbay:
                 if results["price_supp"]:
                     price = float(results["price_supp"].group(1))
                 else:
-                    await self.server_connect.post_error(f'На странице не была найдена цена. @L_trix\n'
-                                                         f'{url}', shop_name)
-                    raise Exception(f'Price is None in {url}')
+                    price = 0
             except ValueError:
                 price = results["price_supp"].group(1)
             except Exception as error:
